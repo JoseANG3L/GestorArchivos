@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestor de Archivos</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+<style>
+:root{
+  --bg:#eef2f7; --panel:#ffffff; --panel2:#f6f8fb; --text:#22303f; --muted:#6b7a8d;
+  --border:rgba(20,40,70,.09); --primary:#0d6efd; --primary-rgb:13,110,253; --shadow:0 6px 20px rgba(20,40,90,.07);
+  --hover:#e9eef5; --row-hover:#f0f5fc; --card-radius:16px; --app-bg:none; --side-w:264px;
+}
+html[data-theme="dark"]{
+  --bg:#0f141b; --panel:#161d27; --panel2:#1c2532; --text:#e6ecf3; --muted:#93a1b3;
+  --border:rgba(255,255,255,.09); --shadow:0 6px 20px rgba(0,0,0,.4);
+  --hover:#222d3d; --row-hover:#1f2a3a;
+}
+/* ===== Acento coherente con Bootstrap ===== */
+.btn-primary{--bs-btn-bg:var(--primary);--bs-btn-border-color:var(--primary);--bs-btn-hover-bg:var(--primary);--bs-btn-hover-border-color:var(--primary);--bs-btn-active-bg:var(--primary);--bs-btn-active-border-color:var(--primary);filter:saturate(.9) brightness(.96)}
+.btn-outline-primary{--bs-btn-color:var(--primary);--bs-btn-border-color:var(--primary);--bs-btn-hover-bg:var(--primary);--bs-btn-hover-border-color:var(--primary)}
+.text-primary{color:var(--primary)!important}
+.bg-primary{background-color:var(--primary)!important}
+.form-check-input:checked{background-color:var(--primary);border-color:var(--primary)}
+/* ===== Bootstrap en modo oscuro ===== */
+html[data-theme="dark"] .text-muted{color:var(--muted)!important}
+html[data-theme="dark"] .btn-light{--bs-btn-bg:var(--panel2);--bs-btn-color:var(--text);--bs-btn-border-color:var(--border);--bs-btn-hover-bg:var(--hover);--bs-btn-hover-color:var(--text)}
+html[data-theme="dark"] .btn-outline-secondary{--bs-btn-color:var(--text);--bs-btn-border-color:var(--border);--bs-btn-hover-bg:var(--hover);--bs-btn-hover-color:var(--text)}
+html[data-theme="dark"] .btn-secondary{--bs-btn-bg:#2a3546;--bs-btn-border-color:#2a3546}
+html[data-theme="dark"] .btn-close{filter:invert(1)}
+html[data-theme="dark"] .bg-light{background-color:var(--panel2)!important;color:var(--text)!important}
+html[data-theme="dark"] .border{border-color:var(--border)!important}
+html[data-theme="dark"] .modal-header,html[data-theme="dark"] .modal-footer{border-color:var(--border)}
+html[data-theme="dark"] .form-text{color:var(--muted)}
+html[data-theme="dark"] hr{border-color:var(--border);opacity:1}
+html[data-theme="dark"] ::-webkit-scrollbar{width:10px;height:10px}
+html[data-theme="dark"] ::-webkit-scrollbar-thumb{background:#2c3949;border-radius:8px}
+/* Toast propio adaptado al tema */
+.fm-toast{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow)}
+/* Apariencia: muestras */
+.swatch{width:34px;height:34px;border-radius:50%;border:3px solid transparent;cursor:pointer;padding:0}
+.swatch.active{border-color:var(--text)}
+.appbg-opt{border:2px solid var(--border);border-radius:12px;height:52px;cursor:pointer;flex:1;min-width:100px}
+.appbg-opt.active{border-color:var(--primary)}
+#custom-preview-card{border:1px solid var(--border);border-radius:12px;overflow:hidden;min-height:120px;display:flex;align-items:flex-end;justify-content:center;position:relative;background:var(--panel2)}
+*{box-sizing:border-box}
+body{background-color:var(--bg);background-image:var(--app-bg);background-attachment:fixed;background-size:cover;color:var(--text);font-family:'Inter','Segoe UI',sans-serif;min-height:100vh}
+html[data-anim="off"] .anim{animation:none!important}
+html[data-anim="off"] .entry-card{transition:none}
+.layout{display:flex;min-height:100vh}
+/* Sidebar */
+.sidebar{width:var(--side-w);flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);padding:12px 10px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:.95rem;margin-bottom:12px}
+.brand .logo{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--primary),#6610f2);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.9rem}
+.side-title{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:12px 6px 6px}
+.side-item{display:flex;align-items:center;gap:8px;width:100%;border:0;background:transparent;color:var(--text);padding:6px 8px;border-radius:8px;font-size:.85rem;text-align:left;cursor:pointer}
+/* Redimensionar explorador */
+#side-resizer{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:ew-resize;z-index:30}
+#side-resizer:hover,#side-resizer.drag{background:rgba(var(--primary-rgb),.35)}
+body.side-collapsed{--side-w:60px}
+body.side-collapsed .sidebar{padding:12px 6px}
+body.side-collapsed .brand .flex-grow-1,body.side-collapsed .side-title,body.side-collapsed #native-badge,body.side-collapsed #add-fav-btn{display:none}
+body.side-collapsed .brand{justify-content:center}
+body.side-collapsed .side-item{font-size:0;justify-content:center;gap:0;padding:8px 0}
+body.side-collapsed .side-item span{display:none}
+body.side-collapsed .sidebar .side-item i{font-size:1rem}
+body.side-collapsed .side-item .del{display:none}
+body.side-collapsed #favorites div.text-muted,body.side-collapsed #quick-access div.text-muted{display:none}
+/* Riel de iconos: el logo hace de expandir (carpeta -> flecha al hover) */
+#brand-logo .logo-expand{display:none}
+body.side-collapsed #brand-logo{cursor:pointer}
+body.side-collapsed #brand-logo:hover .logo-folder{display:none}
+body.side-collapsed #brand-logo:hover .logo-expand{display:block}
+body.side-collapsed #side-collapse{display:none}
+body.side-collapsed #side-resizer{display:none}
+.side-item.selected{background:var(--row-hover)}
+#side-expand{display:none!important}
+/* Columnas de tabla ajustables */
+table.fm{table-layout:fixed}
+table.fm thead th{position:relative;overflow:visible}
+.col-resize{position:absolute;right:-4px;top:0;width:9px;height:100%;cursor:col-resize;z-index:5;border-radius:4px}
+.col-resize:hover{background:rgba(var(--primary-rgb),.45)}
+body.colresizing,body.colresizing table.fm{user-select:none!important}
+body.colresizing .col-resize{background:rgba(var(--primary-rgb),.5)}
+/* Personalización del menú lateral */
+html[data-side-icons="s"] .side-item i{font-size:.78rem}
+html[data-side-icons="l"] .side-item i{font-size:1.25rem}
+html[data-side-bg="accent"] .sidebar{background:color-mix(in srgb, var(--primary) 13%, var(--panel))}
+html[data-side-bg="soft"] .sidebar{background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%)}
+html[data-hide-quick="1"] #quick-title,html[data-hide-quick="1"] #quick-access{display:none}
+html[data-hide-drives="1"] #drives-title,html[data-hide-drives="1"] #drives{display:none}
+html[data-hide-favs="1"] #favs-title,html[data-hide-favs="1"] #favorites,html[data-hide-favs="1"] #add-fav-btn{display:none}
+#sidebg-opts [data-v="default"]{background:var(--panel2)}
+#sidebg-opts [data-v="accent"]{background:linear-gradient(135deg,var(--primary),#6610f2)}
+#sidebg-opts [data-v="soft"]{background:linear-gradient(180deg,var(--panel),var(--panel2))}
+/* Temas predefinidos */
+#theme-presets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.theme-preset{border:2px solid var(--border);border-radius:12px;background:var(--panel);padding:8px;display:flex;flex-direction:column;gap:6px;cursor:pointer;color:var(--text)}
+.theme-preset:hover{border-color:var(--muted)}
+.theme-preset.active{border-color:var(--primary)}
+.tp-bg{height:34px;border-radius:8px;border:1px solid var(--border);background:var(--panel2)}
+.tp-line{display:flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600}
+.tp-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.side-item:hover{background:var(--hover)}
+.side-item.active{background:var(--row-hover);font-weight:600}
+.side-item i{width:20px;text-align:center;color:var(--muted)}
+.side-item .del{margin-left:auto;opacity:0;color:var(--muted)}
+.side-item:hover .del{opacity:1}
+/* Main */
+.main{flex:1;min-width:0;padding:12px 14px 48px;max-width:1400px;margin:0 auto}
+.topbar{background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:8px 12px;margin-bottom:10px}
+.crumbs{display:flex;align-items:center;gap:6px;overflow-x:auto;white-space:nowrap;padding:4px 2px}
+.crumb{border:0;background:transparent;color:var(--primary);font-weight:600;padding:3px 8px;border-radius:8px;display:flex;align-items:center;gap:6px;font-size:.88rem}
+.crumb:hover{background:var(--hover)}
+.crumb.active{color:var(--muted);cursor:default}
+.toolbar-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.topbar .form-control{padding:6px 10px;font-size:.85rem}
+.topbar .search input{padding-left:34px}
+select.control, input.control{padding:6px 10px;font-size:.85rem}
+.search{flex:1;min-width:200px;position:relative}
+.search input{padding-left:38px;background:var(--panel2);border:1px solid var(--border);color:var(--text)}
+.search input::placeholder{color:var(--muted)}
+.search>i{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted)}
+select.control, input.control{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px 10px}
+.btn-icon{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:9px;font-size:.85rem}
+.actionbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.actionbar .btn{padding:5px 10px;font-size:.82rem}
+/* Tarjetas y lista compactas */
+.entry-card{min-height:150px}
+.entry-content{padding:10px}
+.entry-icon{font-size:2.5rem;margin-bottom:8px}
+.entry-name{font-size:.82rem}
+.entry-meta{font-size:.7rem}
+table.fm{font-size:.84rem}
+table.fm tbody td{padding:6px 10px}
+.namecell i{font-size:1.1rem}
+.empty{padding:36px 16px}
+.empty i{font-size:3rem}
+/* Cards grid */
+.entry-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--card-radius);min-height:168px;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s,border-color .15s}
+.entry-card:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
+.entry-card.selected{border-color:var(--primary);box-shadow:0 0 0 3px rgba(var(--primary-rgb),.28)}
+.custom-bg{position:absolute;inset:0;background-size:cover;background-position:center;z-index:1}
+.bg-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.82));z-index:2}
+.entry-content{position:relative;z-index:3;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px;height:100%}
+.entry-icon{font-size:3.2rem;margin-bottom:10px}
+.folder-icon{color:#f0b429}.file-icon{color:#9aa7b5}.file-pdf{color:#ff5252}.file-word{color:#448aff}.file-excel{color:#4caf50}.file-image{color:#ba68c8}.file-code{color:#607d8b}
+.entry-name{font-weight:600;font-size:.9rem;text-align:center;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.has-custom-bg .entry-name{color:#fff;text-shadow:0 2px 4px rgba(0,0,0,.9);margin-top:auto}
+.has-custom-bg .dir-icon{display:none}
+.entry-meta{font-size:.75rem;color:var(--muted)}
+.has-custom-bg .entry-meta{color:rgba(255,255,255,.85)}
+.customize-btn{position:absolute;top:10px;right:10px;z-index:10;background:rgba(255,255,255,.9);border:0;border-radius:50%;width:32px;height:32px;opacity:0;transition:opacity .15s}
+.entry-card:hover .customize-btn{opacity:1}
+/* Checkbox de selección múltiple en tarjetas */
+.sel-check{position:absolute;top:10px;left:10px;z-index:10;border:0;background:rgba(255,255,255,.92);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s,color .15s;color:var(--primary);font-size:1rem}
+.entry-card:hover .sel-check,.sel-check.on{opacity:1}
+.sel-check.on{color:var(--primary)}
+html[data-theme="dark"] .sel-check{background:rgba(0,0,0,.6);color:#fff}
+.row-check{width:16px;height:16px;accent-color:var(--primary);cursor:pointer;vertical-align:middle}
+/* Marco de selección con el mouse */
+#grid-container,#list-container{position:relative}
+#marquee{position:fixed;z-index:1500;pointer-events:none;border:1.5px solid var(--primary);background:rgba(var(--primary-rgb),.14);border-radius:4px;display:none}
+body.marqueeing,body.marqueeing .entry-card,body.marqueeing table.fm{user-select:none!important}
+/* List view */
+.list-panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+table.fm{width:100%;margin:0;font-size:.9rem;color:var(--text)}
+table.fm thead th{background:var(--panel2);color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
+table.fm tbody td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+table.fm tbody tr{cursor:pointer}
+table.fm tbody tr:hover{background:var(--row-hover)}
+table.fm tbody tr.selected{background:rgba(var(--primary-rgb),.14)}
+.namecell{display:flex;align-items:center;gap:10px;min-width:0}
+.namecell i{font-size:1.3rem}
+.namecell span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Status, empty */
+.statusbar{position:fixed;bottom:0;left:var(--side-w);right:0;background:var(--panel);border-top:1px solid var(--border);padding:6px 16px;font-size:.78rem;color:var(--muted);display:flex;gap:18px;z-index:20}
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty i{font-size:4rem;opacity:.3;margin-bottom:14px}
+.file-thumbnail{width:72px;height:72px;object-fit:cover;border-radius:10px;box-shadow:0 4px 8px rgba(0,0,0,.15)}
+@keyframes pop{0%{opacity:0;transform:scale(.92) translateY(10px)}100%{opacity:1;transform:none}}
+.anim{animation:pop .25s ease both}
+/* Context menu */
+#ctx{position:fixed;z-index:2000;min-width:240px;background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.22);padding:6px;display:none}
+#ctx button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;color:var(--text);padding:9px 10px;border-radius:8px;font-size:.9rem;text-align:left}
+#ctx button:hover{background:var(--hover)}
+#ctx hr{margin:6px 4px;opacity:.4}
+#ctx button.danger{color:#dc3545}
+/* Dark modal fixes */
+.modal-content{background:var(--panel);color:var(--text)}
+.form-control,.form-select{background:var(--panel2);border:1px solid var(--border);color:var(--text)}
+.form-control:focus,.form-select:focus{background:var(--panel2);color:var(--text)}
+.toast-container{position:fixed;bottom:52px;right:20px;z-index:3000}
+/* El explorador siempre visible; en pantallas chicas se angosta solo */
+@media(max-width:992px){:root{--side-w:208px}}
+</style>
+</head>
+<body>
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><div class="logo" id="brand-logo" title="Mostrar explorador"><i class="fa-solid fa-folder-open logo-folder"></i><i class="fa-solid fa-chevron-right logo-expand"></i></div><div class="flex-grow-1">Gestor<br></div><button class="btn btn-sm btn-light border btn-icon" id="side-collapse" title="Ocultar explorador" style="width:26px;height:26px"><i class="fa-solid fa-chevron-left"></i></button></div>
+    <span id="native-badge" class="badge bg-success d-none mb-2"><i class="fa-solid fa-desktop me-1"></i>Nativo</span>
+    <div class="side-title" id="quick-title">Acceso rápido</div>
+    <div id="quick-access"></div>
+    <div class="side-title" id="drives-title">Unidades</div>
+    <div id="drives"></div>
+    <div class="side-title" id="favs-title">Favoritos <button class="btn btn-sm btn-link p-0" id="add-fav-btn" title="Fijar carpeta actual"><i class="fa-solid fa-plus"></i></button></div>
+    <div id="favorites"></div>
+    <div class="side-title">Apariencia</div>
+    <button class="side-item" id="appearance-btn"><i class="fa-solid fa-palette"></i>Personalizar tema</button>
+    <div id="side-resizer" title="Arrastra para cambiar el tamaño"></div>
+  </aside>
+  <button class="btn btn-light border btn-icon" id="side-expand" title="Mostrar explorador"><i class="fa-solid fa-chevron-right"></i></button>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-light btn-icon border" id="nav-back" title="Atrás (Alt+←)"><i class="fa-solid fa-arrow-left"></i></button>
+        <button class="btn btn-light btn-icon border" id="nav-fwd" title="Adelante (Alt+→)"><i class="fa-solid fa-arrow-right"></i></button>
+        <button class="btn btn-light btn-icon border" id="up-btn" title="Subir un nivel (Retroceso)"><i class="fa-solid fa-arrow-up"></i></button>
+        <button class="btn btn-light btn-icon border" id="refresh-btn" title="Actualizar (F5)"><i class="fa-solid fa-rotate-right"></i></button>
+        <div class="crumbs flex-grow-1" id="breadcrumbs"><span class="crumb active"><i class="fa-solid fa-house"></i> Inicio</span></div>
+        <button class="btn btn-light btn-icon border" id="appearance-btn-top" title="Personalizar apariencia"><i class="fa-solid fa-paint-roller"></i></button>
+        <button class="btn btn-light btn-icon border" id="theme-btn" title="Tema claro/oscuro"><i class="fa-solid fa-moon"></i></button>
+        <div class="btn-group" role="group">
+          <button class="btn btn-outline-secondary btn-icon" id="view-grid-btn" title="Vista cuadrícula"><i class="fa-solid fa-grip"></i></button>
+          <button class="btn btn-outline-secondary btn-icon" id="view-list-btn" title="Vista lista"><i class="fa-solid fa-list"></i></button>
+        </div>
+      </div>
+      <div class="toolbar-row">
+        <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="search-input" class="form-control" placeholder="Buscar... (Ctrl+F)"></div>
+        <button class="btn btn-light border btn-icon" id="search-scope-btn" title="Ámbito: esta carpeta"><i class="fa-solid fa-folder"></i></button>
+        <select id="sort-select" class="control" title="Ordenar">
+          <option value="name">Nombre</option>
+          <option value="date">Modificados</option>
+          <option value="size">Tamaño</option>
+          <option value="type">Tipo</option>
+        </select>
+        <button class="btn btn-light border btn-icon" id="sort-dir-btn" title="Ascendente/Descendente"><i class="fa-solid fa-arrow-down-a-z"></i></button>
+      </div>
+    </div>
+
+    <div class="actionbar">
+      <button class="btn btn-primary" id="open-dir-btn"><i class="fa-regular fa-folder-open me-2"></i>Abrir carpeta</button>
+      <button class="btn btn-outline-primary" id="new-folder-btn"><i class="fa-solid fa-folder-plus me-2"></i>Nueva carpeta</button>
+      <button class="btn btn-outline-secondary" id="new-file-btn"><i class="fa-solid fa-file-circle-plus me-2"></i>Nuevo archivo</button>
+      <button class="btn btn-outline-secondary" id="paste-btn" disabled><i class="fa-solid fa-paste me-2"></i>Pegar</button>
+      <button class="btn btn-outline-secondary d-none" id="show-explorer-btn"><i class="fa-solid fa-folder-tree me-2"></i>Explorer</button>
+    </div>
+
+    <div class="actionbar d-none" id="selbar">
+      <span class="badge align-self-center text-white" style="background:var(--primary)" id="sel-count">0</span>
+      <button class="btn btn-sm btn-success" id="sel-open"><i class="fa-solid fa-door-open me-1"></i>Abrir</button>
+      <button class="btn btn-sm btn-outline-secondary" id="sel-copy">Copiar</button>
+      <button class="btn btn-sm btn-outline-secondary" id="sel-cut">Cortar</button>
+      <button class="btn btn-sm btn-outline-secondary" id="sel-dup">Duplicar</button>
+      <button class="btn btn-sm btn-outline-secondary" id="sel-paths">Copiar rutas</button>
+      <button class="btn btn-sm btn-outline-secondary" id="sel-props">Propiedades</button>
+      <button class="btn btn-sm btn-outline-danger" id="sel-del"><i class="fa-solid fa-trash me-1"></i>Eliminar</button>
+      <button class="btn btn-sm btn-link" id="sel-clear">Limpiar</button>
+    </div>
+
+    <div id="grid-container" class="row g-3"></div>
+    <div id="list-container" class="list-panel d-none">
+      <table class="fm"><colgroup><col style="width:38px"><col id="col-name"><col id="col-date" style="width:150px"><col id="col-type" style="width:150px"><col id="col-size" style="width:100px"></colgroup><thead><tr>
+        <th style="width:38px"><input type="checkbox" id="check-all" class="row-check" title="Seleccionar todo (Ctrl+A)"></th><th data-sort="name">Nombre</th><th data-sort="date">Modificado</th><th data-sort="type">Tipo</th><th data-sort="size">Tamaño</th>
+      </tr></thead><tbody id="list-body"></tbody></table>
+    </div>
+
+    <div class="statusbar"><span id="st-count">Sin carpeta</span><span id="st-sel"></span><span id="st-clip" class="ms-auto"></span></div>
+  </div>
+</div>
+
+<div id="ctx"></div>
+
+<!-- Modales -->
+<div class="modal fade" id="customizeModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+  <div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold"><i class="fa-solid fa-image text-primary me-2"></i>Personalizar carpeta</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body"><input type="hidden" id="custom-folder-path">
+    <div class="mb-3"><label class="form-label fw-semibold">Desde tu equipo</label><input class="form-control" type="file" id="custom-bg-file" accept="image/*"></div>
+    <div class="mb-3"><label class="form-label fw-semibold">URL de imagen</label><input type="url" class="form-control" id="custom-bg-url" placeholder="https://..."></div>
+    <div class="row g-2 mb-3">
+      <div class="col-6"><label class="form-label fw-semibold">Tinte de color</label><input type="color" class="form-control form-control-color w-100" id="custom-bg-tint" value="#0d6efd"></div>
+      <div class="col-6"><label class="form-label fw-semibold">Color de icono</label><input type="color" class="form-control form-control-color w-100" id="custom-bg-icon" value="#f0b429"></div>
+    </div>
+    <div class="form-check form-switch mb-3">
+      <input class="form-check-input" type="checkbox" id="custom-bg-usetint" checked>
+      <label class="form-check-label" for="custom-bg-usetint">Aplicar tinte sobre la imagen</label>
+    </div>
+    <div class="form-check form-switch mb-3">
+      <input class="form-check-input" type="checkbox" id="custom-bg-useicon">
+      <label class="form-check-label" for="custom-bg-useicon">Usar color de icono personalizado</label>
+    </div>
+    <div class="mb-3"><label class="form-label fw-semibold">Icono en el menú lateral</label>
+      <select class="form-select" id="custom-menu-icon">
+        <option value="">Igual que siempre</option>
+        <option value="fa-star">Estrella</option>
+        <option value="fa-house">Casa</option>
+        <option value="fa-briefcase">Maletín</option>
+        <option value="fa-music">Música</option>
+        <option value="fa-image">Imagen</option>
+        <option value="fa-gamepad">Juegos</option>
+        <option value="fa-cloud">Nube</option>
+        <option value="fa-heart">Corazón</option>
+        <option value="fa-code">Código</option>
+        <option value="fa-book">Libro</option>
+        <option value="fa-folder-open">Carpeta abierta</option>
+      </select>
+      <div class="form-text">Solo afecta al menú lateral (accesos, unidades y favoritos).</div>
+    </div>
+    <label class="form-label fw-semibold">Vista previa</label>
+    <div id="custom-preview-card"><div class="p-3 text-center" id="custom-preview-inner"><i class="fa-solid fa-folder" style="font-size:2.6rem"></i><div class="fw-bold mt-1">Mi carpeta</div></div></div>
+  </div>
+  <div class="modal-footer border-0"><button class="btn btn-light" onclick="clearCustomization()">Quitar</button><button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="saveCustomization()">Guardar</button></div>
+</div></div></div>
+
+<div class="modal fade" id="themeModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title fw-bold"><i class="fa-solid fa-palette text-primary me-2"></i>Apariencia</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <label class="form-label fw-semibold">Temas predefinidos</label>
+    <div id="theme-presets" class="mb-3"></div>
+    <label class="form-label fw-semibold">Modo</label>
+    <div class="btn-group w-100 mb-3" role="group">
+      <button class="btn btn-outline-secondary" id="mode-light-btn"><i class="fa-solid fa-sun me-2"></i>Claro</button>
+      <button class="btn btn-outline-secondary" id="mode-dark-btn"><i class="fa-solid fa-moon me-2"></i>Oscuro</button>
+    </div>
+    <label class="form-label fw-semibold">Color de acento</label>
+    <div class="d-flex gap-2 flex-wrap mb-2" id="accent-swatches"></div>
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <input type="color" class="form-control form-control-color" id="accent-custom" value="#0d6efd" title="Color personalizado">
+      <label class="small text-muted mb-0" for="accent-custom">Personalizado</label>
+      <button class="btn btn-sm btn-outline-secondary ms-auto" id="accent-reset">Restablecer</button>
+    </div>
+    <label class="form-label fw-semibold">Fondo de la app</label>
+    <div class="d-flex gap-2 mb-3 flex-wrap" id="appbg-opts">
+      <div class="appbg-opt" data-bg="none" title="Predeterminado" style="background:var(--panel2)"></div>
+      <div class="appbg-opt" data-bg="linear-gradient(135deg,#e0e7ff,#f5f3ff)" title="Azul suave" style="background:linear-gradient(135deg,#e0e7ff,#f5f3ff)"></div>
+      <div class="appbg-opt" data-bg="linear-gradient(135deg,#d1fae5,#ecfdf5)" title="Verde suave" style="background:linear-gradient(135deg,#d1fae5,#ecfdf5)"></div>
+      <div class="appbg-opt" data-bg="linear-gradient(135deg,#ffe8cc,#ffe3e3)" title="Atardecer suave" style="background:linear-gradient(135deg,#ffe8cc,#ffe3e3)"></div>
+      <div class="appbg-opt" data-bg="linear-gradient(135deg,#1e293b,#0f172a)" title="Noche" style="background:linear-gradient(135deg,#1e293b,#0f172a)"></div>
+    </div>
+    <div class="row g-2 align-items-center">
+      <div class="col-6"><label class="form-label fw-semibold mb-0">Esquinas</label><input type="range" class="form-range" id="radius-range" min="8" max="24" step="2" value="16"></div>
+      <div class="col-6"><div class="form-check form-switch mt-3"><input class="form-check-input" type="checkbox" id="anim-switch" checked><label class="form-check-label" for="anim-switch">Animaciones</label></div></div>
+    </div>
+    <hr>
+    <label class="form-label fw-semibold">Menú lateral</label>
+    <label class="small text-muted d-block">Tamaño de iconos</label>
+    <div class="btn-group w-100 mb-2" role="group" id="side-icons-group">
+      <button class="btn btn-outline-secondary" data-v="s">Chico</button>
+      <button class="btn btn-outline-secondary" data-v="m">Medio</button>
+      <button class="btn btn-outline-secondary" data-v="l">Grande</button>
+    </div>
+    <label class="small text-muted d-block">Fondo del menú</label>
+    <div class="d-flex gap-2 mb-2" id="sidebg-opts">
+      <div class="appbg-opt" data-v="default" title="Predeterminado"></div>
+      <div class="appbg-opt" data-v="accent" title="Tinte de acento"></div>
+      <div class="appbg-opt" data-v="soft" title="Suave"></div>
+    </div>
+    <div class="d-flex gap-3 flex-wrap">
+      <div class="form-check"><input class="form-check-input" type="checkbox" id="show-quick"><label class="form-check-label small" for="show-quick">Acceso rápido</label></div>
+      <div class="form-check"><input class="form-check-input" type="checkbox" id="show-drives"><label class="form-check-label small" for="show-drives">Unidades</label></div>
+      <div class="form-check"><input class="form-check-input" type="checkbox" id="show-favs"><label class="form-check-label small" for="show-favs">Favoritos</label></div>
+    </div>
+    <div class="form-text mt-2">Tip: clic derecho sobre cualquier elemento del menú para cambiar su icono y color.</div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button></div>
+</div></div></div>
+
+<div class="modal fade" id="editorModal" tabindex="-1" data-bs-backdrop="static"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title"><i class="fa-solid fa-file-pen text-primary me-2"></i><span id="editor-title">Editor</span></h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body p-0"><textarea id="editor-textarea" class="form-control" style="height:65vh;font-family:Consolas,monospace;border:0;resize:none" placeholder="Cargando..."></textarea></div>
+  <div class="modal-footer d-flex justify-content-between"><span id="editor-status" class="text-muted small"></span><div><button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button><button class="btn btn-primary" onclick="saveEditedFile()"><i class="fa-solid fa-floppy-disk me-2"></i>Guardar</button></div></div>
+</div></div></div>
+
+<div class="modal fade" id="previewModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content bg-dark text-white">
+  <div class="modal-header border-secondary"><h5 class="modal-title text-truncate" id="preview-title">Vista previa</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body p-0 d-flex justify-content-center align-items-center" id="preview-body" style="min-height:70vh;background:#000"></div>
+  <div class="modal-footer border-secondary"><button class="btn btn-success" id="preview-open-btn"><i class="fa-solid fa-arrow-up-right-from-square me-2"></i>Abrir con programa</button><button class="btn btn-outline-light" id="preview-folder-btn">Mostrar en Explorer</button></div>
+</div></div></div>
+
+<div class="modal fade" id="inputModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title" id="input-title">Nuevo</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body"><input id="input-value" class="form-control form-control-lg"></div>
+  <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" id="input-ok">Aceptar</button></div>
+</div></div></div>
+
+<div class="modal fade" id="confirmModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content">
+  <div class="modal-body text-center p-4"><i class="fa-solid fa-trash-can fa-3x mb-3 text-danger"></i><h5 id="confirm-title">Eliminar</h5><p id="confirm-text" class="text-muted"></p>
+  <button class="btn btn-secondary w-100 mb-2" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-danger w-100" id="confirm-ok">Enviar a papelera</button></div>
+</div></div></div>
+
+<div class="modal fade" id="propsModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title"><i class="fa-solid fa-circle-info me-2 text-primary"></i>Propiedades</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body" id="props-body"></div>
+  <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button></div>
+</div></div></div>
+
+<div class="modal fade" id="messageModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content">
+  <div class="modal-body text-center p-4"><i id="msg-icon" class="fa-solid fa-info-circle fa-3x mb-3 text-primary"></i><h5 id="msg-title">Mensaje</h5><p id="msg-text" class="text-muted"></p><button class="btn btn-primary w-100" data-bs-dismiss="modal">Entendido</button></div>
+</div></div></div>
+
+<div class="toast-container" id="toast-container"></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ============ ESTADO ============
+const isElectron = !!(window.winAPI && window.winAPI.isElectron);
+let currentPathStack = [];
+let allEntries = [];
+let handleMap = new Map(); // modo navegador: clave virtual -> handle
+let customBackgrounds = {};
+let viewMode = localStorage.getItem('fmView') || 'grid';
+let sortBy = 'name', sortDir = 1;
+let searchQuery = '';
+let searchScope = 'local'; // 'local' | 'global'
+let globalResults = [], globalTruncated = false, searching = false, searchSeq = 0, searchTimer = 0;
+const isGlobalSearch = () => searchScope === 'global' && searchQuery.trim().length >= 2 && isElectron;
+const parentName = p => { const s = String(p).split(/[\\/]/).filter(Boolean); return s.length > 1 ? s[s.length - 2] : ''; };
+let clipboard = null; // {mode:'copy'|'cut', items:[fullPath]}
+let selected = []; // multiselección: array de fullPath
+let selAnchor = null; // ancla para Shift+clic
+let favorites = JSON.parse(localStorage.getItem('fmFavorites') || '[]');
+if (isElectron) {
+  const valid = favorites.filter(f => /^[A-Za-z]:\\/i.test(f));
+  if (valid.length !== favorites.length) { favorites = valid; localStorage.setItem('fmFavorites', JSON.stringify(favorites)); }
+}
+let currentPreviewPath = null, currentPreviewUrl = null, currentNativeEditing = null, currentEditingHandle = null;
+let inputModal, confirmModal, customizeModal, messageModal, editorModal, previewModal, propsModal, themeModal;
+let confirmAction = null, inputAction = null;
+// Ajustes de apariencia (migra la clave antigua fmTheme)
+let themeSettings = { mode: localStorage.getItem('fmTheme') || 'light', accent: '#0d6efd', appBg: 'none', radius: 16, anim: true, sideIcons: 'm', sideBg: 'default', showQuick: true, showDrives: true, showFavs: true };
+try { Object.assign(themeSettings, JSON.parse(localStorage.getItem('fmThemeSettings') || '{}')); } catch {}
+const ACCENTS = ['#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14', '#198754', '#0dcaf0'];
+// Temas predefinidos: cambian modo + acento + fondo de app + fondo de menú de una vez
+const THEMES = [
+  { id: 'claro', name: 'Claro', mode: 'light', accent: '#0d6efd', appBg: 'none', sideBg: 'default' },
+  { id: 'oscuro', name: 'Oscuro', mode: 'dark', accent: '#0d6efd', appBg: 'none', sideBg: 'default' },
+  { id: 'oceano', name: 'Océano', mode: 'light', accent: '#0dcaf0', appBg: 'linear-gradient(135deg,#e0e7ff,#f5f3ff)', sideBg: 'accent' },
+  { id: 'bosque', name: 'Bosque', mode: 'light', accent: '#198754', appBg: 'linear-gradient(135deg,#d1fae5,#ecfdf5)', sideBg: 'accent' },
+  { id: 'atardecer', name: 'Atardecer', mode: 'light', accent: '#fd7e14', appBg: 'linear-gradient(135deg,#ffe8cc,#ffe3e3)', sideBg: 'soft' },
+  { id: 'medianoche', name: 'Medianoche', mode: 'dark', accent: '#6610f2', appBg: 'linear-gradient(135deg,#1e293b,#0f172a)', sideBg: 'accent' }
+];
+const hexToRgb = h => { const m = h.replace('#', ''); const v = m.length === 3 ? m.split('').map(c => c + c).join('') : m; const n = parseInt(v, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(','); };
+// Personalización de carpetas: { bg, tint, useTint, icon, useIcon } (se migra string antiguo -> {bg})
+const normCustomBg = v => typeof v === 'string' ? (v ? { bg: v, tint: '#0d6efd', useTint: false, icon: '#f0b429', useIcon: false } : null) : (v || null);
+// Color de icono personalizado para una ruta (vale para tarjetas, tabla y menú lateral)
+const customIconFor = p => { const c = normCustomBg(customBackgrounds[p]); return c && c.useIcon && c.icon ? c.icon : null; };
+// Icono elegido para el menú lateral (clic derecho > Personalizar); null = el de siempre
+const menuIconFor = p => { const c = normCustomBg(customBackgrounds[p]); return c && c.menuIcon ? c.menuIcon : null; };
+function refreshSideCustom(){ renderFavorites(); if (isElectron) loadSidebar(); }
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const extOf = n => (n.split('.').pop() || '').toLowerCase();
+const fmtSize = s => { if (s == null) return '—'; if (s === 0) return '0 B'; const u = ['B','KB','MB','GB','TB']; const i = Math.min(u.length - 1, Math.floor(Math.log(s) / Math.log(1024))); return (s / Math.pow(1024, i)).toFixed(i ? 1 : 0) + ' ' + u[i]; };
+const fmtDate = m => m ? new Date(m).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+function iconFor(e){ if (e.isDirectory) return 'fa-solid fa-folder folder-icon'; const x = (e.ext || extOf(e.name)); if (['jpg','jpeg','png','gif','webp','svg','bmp','ico'].includes(x)) return 'fa-solid fa-file-image file-image'; if (x === 'pdf') return 'fa-solid fa-file-pdf file-pdf'; if (['doc','docx'].includes(x)) return 'fa-solid fa-file-word file-word'; if (['xls','xlsx','csv'].includes(x)) return 'fa-solid fa-file-excel file-excel'; if (['js','html','css','json','ts','py','jsx','tsx','java','cs','cpp'].includes(x)) return 'fa-solid fa-file-code file-code'; if (['zip','rar','7z','tar','gz'].includes(x)) return 'fa-solid fa-file-zipper file-icon'; if (['mp4','mkv','avi','webm','mov'].includes(x)) return 'fa-solid fa-file-video file-icon'; if (['mp3','wav','ogg','m4a','flac'].includes(x)) return 'fa-solid fa-file-audio file-icon'; if (['exe','msi','bat','cmd'].includes(x)) return 'fa-solid fa-gear file-icon'; return 'fa-solid fa-file file-icon'; }
+function typeLabel(e){ if (e.isDirectory) return 'Carpeta'; const x = (e.ext || extOf(e.name)) || '—'; return x === '—' ? 'Archivo' : x.toUpperCase() + ' — archivo'; }
+const curDir = () => currentPathStack.length ? currentPathStack[currentPathStack.length - 1].fullPath || currentPathStack[currentPathStack.length - 1].name : null;
+const joinPath = (dir, name) => dir.endsWith('\\') || dir.endsWith('/') ? dir + name : dir + '\\' + name;
+
+// ============ INIT ============
+window.addEventListener('DOMContentLoaded', () => {
+  customizeModal = new bootstrap.Modal($('customizeModal')); messageModal = new bootstrap.Modal($('messageModal'));
+  editorModal = new bootstrap.Modal($('editorModal')); previewModal = new bootstrap.Modal($('previewModal'));
+  inputModal = new bootstrap.Modal($('inputModal')); confirmModal = new bootstrap.Modal($('confirmModal'));
+  propsModal = new bootstrap.Modal($('propsModal')); themeModal = new bootstrap.Modal($('themeModal'));
+  $('previewModal').addEventListener('hidden.bs.modal', () => { $('preview-body').innerHTML = ''; if (currentPreviewUrl && currentPreviewUrl.startsWith('blob:')) URL.revokeObjectURL(currentPreviewUrl); currentPreviewUrl = null; });
+  applyThemeSettings();
+  buildAccentSwatches();
+  buildThemePresets();
+  applySideBar();
+  applyViewButtons();
+  $('sort-select').value = sortBy;
+  try { customBackgrounds = JSON.parse(localStorage.getItem('localFileMgrBackgrounds') || '{}'); } catch {}
+
+  $('open-dir-btn').onclick = openRootDirectory;
+  $('refresh-btn').onclick = () => loadCurrentDirectory();
+  $('up-btn').onclick = goUp;
+  $('nav-back').onclick = goBack;
+  $('nav-fwd').onclick = goFwd;
+  updateNavButtons();
+  initColResize();
+  $('show-explorer-btn').onclick = () => { if (curDir() && isElectron) window.winAPI.showInFolder(curDir()); };
+  $('new-folder-btn').onclick = askNewFolder;
+  $('new-file-btn').onclick = askNewFile;
+  $('paste-btn').onclick = doPaste;
+  $('check-all').onchange = e => { e.target.checked ? selectAllVisible() : clearSelection(); };
+  $('sel-open').onclick = openSelected;
+  $('sel-copy').onclick = () => clipSelected('copy');
+  $('sel-cut').onclick = () => clipSelected('cut');
+  $('sel-dup').onclick = duplicateSelected;
+  $('sel-paths').onclick = copyPathsSelected;
+  $('sel-props').onclick = propsSelected;
+  $('sel-del').onclick = deleteSelected;
+  $('sel-clear').onclick = clearSelection;
+  $('add-fav-btn').onclick = addFavorite;
+  $('theme-btn').onclick = () => { themeSettings.mode = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; saveThemeSettings(); applyThemeSettings(); };
+  $('appearance-btn').onclick = openThemeModal;
+  $('appearance-btn-top').onclick = openThemeModal;
+  $('side-collapse').onclick = () => setSideCollapsed(true);
+  $('brand-logo').onclick = () => { if (document.body.classList.contains('side-collapsed')) setSideCollapsed(false); };
+  initSideResizer();
+  $('mode-light-btn').onclick = () => { themeSettings.mode = 'light'; saveThemeSettings(); applyThemeSettings(); syncThemeModal(); };
+  $('mode-dark-btn').onclick = () => { themeSettings.mode = 'dark'; saveThemeSettings(); applyThemeSettings(); syncThemeModal(); };
+  $('accent-custom').oninput = e => { themeSettings.accent = e.target.value; saveThemeSettings(); applyThemeSettings(); syncThemeModal(); };
+  $('accent-reset').onclick = () => { themeSettings.accent = '#0d6efd'; saveThemeSettings(); applyThemeSettings(); syncThemeModal(); };
+  $('radius-range').oninput = e => { themeSettings.radius = +e.target.value; saveThemeSettings(); applyThemeSettings(); };
+  $('anim-switch').onchange = e => { themeSettings.anim = e.target.checked; saveThemeSettings(); applyThemeSettings(); };
+  document.querySelectorAll('#appbg-opts .appbg-opt').forEach(o => o.onclick = () => { themeSettings.appBg = o.dataset.bg; saveThemeSettings(); applyThemeSettings(); syncThemeModal(); });
+  document.querySelectorAll('#side-icons-group button').forEach(b => b.onclick = () => { themeSettings.sideIcons = b.dataset.v; saveThemeSettings(); applyThemeSettings(); syncThemeModal(); });
+  document.querySelectorAll('#sidebg-opts .appbg-opt').forEach(o => o.onclick = () => { themeSettings.sideBg = o.dataset.v; saveThemeSettings(); applyThemeSettings(); syncThemeModal(); });
+  $('show-quick').onchange = e => { themeSettings.showQuick = e.target.checked; saveThemeSettings(); applyThemeSettings(); };
+  $('show-drives').onchange = e => { themeSettings.showDrives = e.target.checked; saveThemeSettings(); applyThemeSettings(); };
+  $('show-favs').onchange = e => { themeSettings.showFavs = e.target.checked; saveThemeSettings(); applyThemeSettings(); };
+  ['custom-bg-url', 'custom-bg-tint', 'custom-bg-icon'].forEach(id => $(id).addEventListener('input', updateCustomPreview));
+  $('custom-bg-usetint').onchange = updateCustomPreview;
+  $('custom-bg-useicon').onchange = updateCustomPreview;
+  $('view-grid-btn').onclick = () => setView('grid');
+  $('view-list-btn').onclick = () => setView('list');
+  $('sort-select').onchange = e => { sortBy = e.target.value; applyView(); };
+  $('sort-dir-btn').onclick = () => { sortDir *= -1; applyView(); };
+  $('search-input').oninput = e => {
+    searchQuery = e.target.value.toLowerCase();
+    if (searchScope === 'global') runGlobalSearch();
+    else { globalResults = []; applyView(); }
+  };
+  if (!isElectron) $('search-scope-btn').classList.add('d-none');
+  $('search-scope-btn').onclick = () => {
+    searchScope = searchScope === 'global' ? 'local' : 'global';
+    const g = searchScope === 'global';
+    $('search-scope-btn').innerHTML = `<i class="fa-solid ${g ? 'fa-earth-americas' : 'fa-folder'}"></i>`;
+    $('search-scope-btn').title = g ? 'Ámbito: esta carpeta y subcarpetas (clic para solo esta)' : 'Ámbito: esta carpeta (clic para global)';
+    $('search-scope-btn').classList.toggle('btn-primary', g);
+    $('search-scope-btn').classList.toggle('btn-light', !g);
+    $('search-input').placeholder = g ? 'Buscar en subcarpetas... (mín. 2 letras)' : 'Buscar... (Ctrl+F)';
+    runGlobalSearch();
+  };
+  $('input-ok').onclick = () => { if (inputAction) inputAction($('input-value').value.trim()); };
+  $('confirm-ok').onclick = () => { confirmModal.hide(); if (confirmAction) confirmAction(); };
+  $('preview-open-btn').onclick = () => { if (currentPreviewPath) openExternal(currentPreviewPath); };
+  $('preview-folder-btn').onclick = () => { if (currentPreviewPath && isElectron) window.winAPI.showInFolder(currentPreviewPath); };
+  document.querySelectorAll('th[data-sort]').forEach(th => th.onclick = () => { if (window.__colMoved) return; const k = th.dataset.sort; if (sortBy === k) sortDir *= -1; else { sortBy = k; sortDir = 1; } $('sort-select').value = sortBy; applyView(); });
+  document.addEventListener('click', e => { if (!$('ctx').contains(e.target)) hideCtx(); });
+  document.addEventListener('contextmenu', e => { if (!e.target.closest('#grid-container') && !e.target.closest('#list-container') && !e.target.closest('.sidebar')) return; });
+  document.addEventListener('keydown', onKeys);
+  $('grid-container').addEventListener('contextmenu', e => { const card = e.target.closest('[data-path]'); e.preventDefault(); card ? showCtx(e, entryByPath(card.dataset.path)) : showCtxEmpty(e); });
+  $('list-body').addEventListener('contextmenu', e => { const tr = e.target.closest('[data-path]'); e.preventDefault(); tr ? showCtx(e, entryByPath(tr.dataset.path)) : showCtxEmpty(e); });
+  // Menú lateral también con personalización (clic derecho en accesos, unidades y favoritos)
+  $('sidebar').addEventListener('contextmenu', e => {
+    const it = e.target.closest('.side-item[data-path]');
+    if (!it) return;
+    e.preventDefault();
+    const p = it.dataset.path;
+    const nm = p.split(/[\\/]/).filter(Boolean).pop() || p;
+    showCtx(e, { name: nm, fullPath: p, isDirectory: true, size: 0, mtime: 0, ext: '' });
+  });
+  $('custom-bg-file').addEventListener('change', resizeCustomImage);
+  initMarquee();
+
+  if (!isElectron && !('showDirectoryPicker' in window)) {
+    showMsg('Modo limitado', 'Abre esta app con Electron (npm start) para funciones nativas: ejecutar programas, crear y eliminar.', 'fa-triangle-exclamation text-warning');
+    setActionsEnabled(false);
+  }
+  if (isElectron) { const nb = $('native-badge'); if (nb) nb.classList.remove('d-none'); $('show-explorer-btn').classList.remove('d-none'); loadSidebar(); }
+  else renderQuickFallback();
+  renderFavorites();
+  applyView();
+});
+
+function setActionsEnabled(on){ ['new-folder-btn','new-file-btn','paste-btn'].forEach(id => $(id).disabled = !on); }
+function saveThemeSettings(){ try { localStorage.setItem('fmThemeSettings', JSON.stringify(themeSettings)); localStorage.setItem('fmTheme', themeSettings.mode); } catch {} }
+function applyThemeSettings(){
+  // Blindaje: un valor corrupto en almacenamiento no debe romper el tema
+  if (themeSettings.mode !== 'dark' && themeSettings.mode !== 'light') themeSettings.mode = 'light';
+  if (!/^#[0-9a-f]{6}$/i.test(themeSettings.accent || '')) themeSettings.accent = '#0d6efd';
+  if (!(themeSettings.radius >= 8 && themeSettings.radius <= 24)) themeSettings.radius = 16;
+  document.documentElement.dataset.theme = themeSettings.mode;
+  document.documentElement.style.setProperty('--primary', themeSettings.accent);
+  document.documentElement.style.setProperty('--primary-rgb', hexToRgb(themeSettings.accent));
+  document.documentElement.style.setProperty('--card-radius', themeSettings.radius + 'px');
+  document.documentElement.style.setProperty('--app-bg', themeSettings.appBg);
+  document.documentElement.dataset.anim = themeSettings.anim ? 'on' : 'off';
+  document.documentElement.dataset.sideIcons = themeSettings.sideIcons || 'm';
+  document.documentElement.dataset.sideBg = themeSettings.sideBg || 'default';
+  document.documentElement.dataset.hideQuick = themeSettings.showQuick === false ? '1' : '0';
+  document.documentElement.dataset.hideDrives = themeSettings.showDrives === false ? '1' : '0';
+  document.documentElement.dataset.hideFavs = themeSettings.showFavs === false ? '1' : '0';
+  $('theme-btn').innerHTML = themeSettings.mode === 'dark' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+  $('accent-custom').value = themeSettings.accent;
+  $('radius-range').value = themeSettings.radius;
+  $('anim-switch').checked = themeSettings.anim;
+}
+function buildAccentSwatches(){
+  const w = $('accent-swatches'); w.innerHTML = '';
+  ACCENTS.forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'swatch'; b.style.background = c; b.title = c;
+    b.onclick = () => { themeSettings.accent = c; saveThemeSettings(); applyThemeSettings(); syncThemeModal(); };
+    w.appendChild(b);
+  });
+  syncThemeModal();
+}
+function buildThemePresets(){
+  const w = $('theme-presets');
+  if (!w) return;
+  w.innerHTML = '';
+  THEMES.forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'theme-preset'; b.dataset.id = t.id; b.title = t.name;
+    const bg = document.createElement('span'); bg.className = 'tp-bg';
+    if (t.appBg && t.appBg !== 'none') bg.style.background = t.appBg;
+    const line = document.createElement('span'); line.className = 'tp-line';
+    const dot = document.createElement('span'); dot.className = 'tp-dot'; dot.style.background = t.accent;
+    const nm = document.createElement('span'); nm.textContent = t.name;
+    line.appendChild(dot); line.appendChild(nm);
+    b.appendChild(bg); b.appendChild(line);
+    b.onclick = () => {
+      themeSettings.mode = t.mode; themeSettings.accent = t.accent;
+      themeSettings.appBg = t.appBg; themeSettings.sideBg = t.sideBg;
+      saveThemeSettings(); applyThemeSettings(); syncThemeModal();
+      showToast(`Tema ${t.name} aplicado`);
+    };
+    w.appendChild(b);
+  });
+}
+function syncThemeModal(){
+  document.querySelectorAll('#accent-swatches .swatch').forEach(s => s.classList.toggle('active', s.style.background && rgbToHex(s.style.background) === themeSettings.accent.toLowerCase()));
+  document.querySelectorAll('#appbg-opts .appbg-opt').forEach(o => o.classList.toggle('active', o.dataset.bg === themeSettings.appBg));
+  $('mode-light-btn').classList.toggle('btn-primary', themeSettings.mode === 'light');
+  $('mode-dark-btn').classList.toggle('btn-primary', themeSettings.mode === 'dark');
+  document.querySelectorAll('#side-icons-group button').forEach(b => b.classList.toggle('btn-primary', b.dataset.v === (themeSettings.sideIcons || 'm')));
+  document.querySelectorAll('#sidebg-opts .appbg-opt').forEach(o => o.classList.toggle('active', o.dataset.v === (themeSettings.sideBg || 'default')));
+  $('show-quick').checked = themeSettings.showQuick !== false;
+  $('show-drives').checked = themeSettings.showDrives !== false;
+  $('show-favs').checked = themeSettings.showFavs !== false;
+  document.querySelectorAll('#theme-presets .theme-preset').forEach(p => {
+    const t = THEMES.find(x => x.id === p.dataset.id);
+    p.classList.toggle('active', !!t && t.mode === themeSettings.mode &&
+      t.accent.toLowerCase() === String(themeSettings.accent).toLowerCase() &&
+      t.appBg === themeSettings.appBg && t.sideBg === (themeSettings.sideBg || 'default'));
+  });
+}
+function rgbToHex(rgb){ const m = rgb.match(/\d+/g); if (!m) return rgb; return '#' + m.slice(0, 3).map(n => (+n).toString(16).padStart(2, '0')).join(''); }
+function openThemeModal(){ syncThemeModal(); themeModal.show(); }
+function syncSideCollapse(){
+  const c = document.body.classList.contains('side-collapsed');
+  const b = $('side-collapse');
+  if (b) { b.innerHTML = `<i class="fa-solid fa-chevron-${c ? 'right' : 'left'}"></i>`; b.title = c ? 'Mostrar explorador' : 'Ocultar explorador (solo iconos)'; }
+}
+function setSideCollapsed(v){
+  document.body.classList.toggle('side-collapsed', !!v);
+  try { localStorage.setItem('fmSideCollapsed', v ? '1' : '0'); } catch {}
+  syncSideCollapse();
+}
+// ---- Historial atrás/adelante ----
+let histBack = [], histFwd = [];
+const snapStack = () => currentPathStack.map(x => ({ ...x }));
+function histPush(){ if (currentPathStack.length) histBack.push(snapStack()); histFwd = []; updateNavButtons(); }
+function clearHistory(){ histBack = []; histFwd = []; updateNavButtons(); }
+function goBack(){
+  if (!histBack.length) return;
+  histFwd.push(snapStack());
+  currentPathStack = histBack.pop();
+  selected = []; selAnchor = null;
+  loadCurrentDirectory(); updateNavButtons();
+}
+function goFwd(){
+  if (!histFwd.length) return;
+  histBack.push(snapStack());
+  currentPathStack = histFwd.pop();
+  selected = []; selAnchor = null;
+  loadCurrentDirectory(); updateNavButtons();
+}
+function updateNavButtons(){
+  const b = $('nav-back'), f = $('nav-fwd');
+  if (b) b.disabled = !histBack.length;
+  if (f) f.disabled = !histFwd.length;
+}
+// ---- Ancho de columnas ajustable ----
+function applyColW(){
+  let w = {};
+  try { w = JSON.parse(localStorage.getItem('fmColW') || '{}'); } catch {}
+  ['name', 'date', 'type', 'size'].forEach(k => {
+    const c = $('col-' + k);
+    if (c && w[k]) c.style.width = w[k] + 'px';
+  });
+}
+function initColResize(){
+  applyColW();
+  const map = { name: 'col-name', date: 'col-date', type: 'col-type', size: 'col-size' };
+  document.querySelectorAll('th[data-sort]').forEach(th => {
+    const h = document.createElement('span');
+    h.className = 'col-resize'; h.title = 'Arrastra para ajustar el ancho';
+    th.appendChild(h);
+    h.addEventListener('click', e => e.stopPropagation());
+    h.addEventListener('mousedown', e => {
+      e.preventDefault(); e.stopPropagation();
+      const col = $(map[th.dataset.sort]);
+      if (!col) return;
+      const startX = e.clientX, startW = col.getBoundingClientRect().width;
+      document.body.classList.add('colresizing');
+      const move = ev => {
+        if (Math.abs(ev.clientX - startX) > 3) window.__colMoved = true;
+        col.style.width = Math.max(70, startW + ev.clientX - startX) + 'px';
+      };
+      const up = () => {
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+        document.body.classList.remove('colresizing');
+        try {
+          const w = JSON.parse(localStorage.getItem('fmColW') || '{}');
+          w[th.dataset.sort] = Math.round(col.getBoundingClientRect().width);
+          localStorage.setItem('fmColW', JSON.stringify(w));
+        } catch {}
+        setTimeout(() => { window.__colMoved = false; }, 60);
+      };
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+  });
+}
+// ---- Explorador lateral: tamaño ajustable y visible siempre ----
+function applySideBar(){
+  try {
+    const w = parseInt(localStorage.getItem('fmSideW') || '0', 10);
+    if (w >= 190 && w <= 440) document.documentElement.style.setProperty('--side-w', w + 'px');
+    setSideCollapsed(localStorage.getItem('fmSideCollapsed') === '1');
+  } catch { syncSideCollapse(); }
+}
+function initSideResizer(){
+  const rz = $('side-resizer');
+  if (!rz) return;
+  rz.addEventListener('mousedown', e => {
+    e.preventDefault();
+    rz.classList.add('drag');
+    const move = ev => {
+      const w = Math.min(440, Math.max(190, ev.clientX));
+      document.documentElement.style.setProperty('--side-w', w + 'px');
+    };
+    const up = ev => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+      rz.classList.remove('drag');
+      const w = Math.min(440, Math.max(190, ev.clientX));
+      try { localStorage.setItem('fmSideW', String(w)); } catch {}
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  });
+}
+function setView(v){ viewMode = v; localStorage.setItem('fmView', v); applyViewButtons(); applyView(); }
+function applyViewButtons(){ $('view-grid-btn').classList.toggle('btn-primary', viewMode === 'grid'); $('view-list-btn').classList.toggle('btn-primary', viewMode === 'list'); }
+
+// ============ SIDEBAR ============
+async function loadSidebar(){
+  try {
+    const sp = await window.winAPI.specialPaths();
+    const items = [['Inicio', sp.home, 'fa-house'], ['Escritorio', sp.desktop, 'fa-desktop'], ['Documentos', sp.documents, 'fa-file-lines'], ['Descargas', sp.downloads, 'fa-download'], ['Imágenes', sp.pictures, 'fa-image'], ['Música', sp.music, 'fa-music']];
+    $('quick-access').innerHTML = '';
+    items.forEach(([label, p, icon]) => { if (!p) return; const b = document.createElement('button'); b.className = 'side-item'; b.dataset.path = p; b.title = label + ' — ' + p; const cc = customIconFor(p); const ic = menuIconFor(p) || icon; b.innerHTML = `<i class="fa-solid ${ic}"${cc ? ` style="color:${cc}"` : ''}></i>${label}`; b.onclick = () => navigateToPath(p); $('quick-access').appendChild(b); });
+    const drives = await window.winAPI.getDrives();
+    $('drives').innerHTML = '';
+    drives.forEach(d => { const b = document.createElement('button'); b.className = 'side-item'; b.dataset.path = d; const cc = customIconFor(d); const ic = menuIconFor(d) || 'fa-hard-drive'; b.innerHTML = `<i class="fa-solid ${ic}"${cc ? ` style="color:${cc}"` : ''}></i>Disco (${d[0]}:)`; b.title = d; b.onclick = () => navigateToPath(d); $('drives').appendChild(b); });
+  } catch (e) { console.error(e); }
+}
+function renderQuickFallback(){ $('quick-access').innerHTML = '<div class="text-muted small px-2">Usa "Abrir carpeta".</div>'; $('drives').innerHTML = ''; }
+function renderFavorites(){
+  $('favorites').innerHTML = favorites.length ? '' : '<div class="text-muted small px-2">Sin favoritos. Navega y pulsa +.</div>';
+  favorites.forEach(f => {
+    const b = document.createElement('button'); b.className = 'side-item';
+    b.dataset.path = f;
+    const name = f.split(/[\\/]/).filter(Boolean).pop() || f;
+    const cc = customIconFor(f);
+    const ic = menuIconFor(f) || 'fa-star';
+    b.innerHTML = `<i class="fa-solid ${ic}"${cc ? ` style="color:${cc}"` : ''}></i><span class="text-truncate">${name}</span><span class="del"><i class="fa-solid fa-xmark"></i></span>`;
+    b.title = f; b.onclick = () => isElectron ? navigateToPath(f) : null;
+    b.querySelector('.del').onclick = e => { e.stopPropagation(); favorites = favorites.filter(x => x !== f); localStorage.setItem('fmFavorites', JSON.stringify(favorites)); renderFavorites(); };
+    $('favorites').appendChild(b);
+  });
+}
+function addFavorite(){ const d = curDir(); if (!d) return showMsg('Favoritos', 'Abre primero una carpeta.', 'fa-star text-warning'); if (!favorites.includes(d)) { favorites.push(d); localStorage.setItem('fmFavorites', JSON.stringify(favorites)); renderFavorites(); showToast('Añadido a favoritos'); } }
+
+// ============ NAVEGACIÓN ============
+async function openRootDirectory(){
+  if (isElectron) {
+    const res = await window.winAPI.selectFolder();
+    if (res.canceled) return;
+    navigateToPath(res.path);
+    return;
+  }
+  try {
+    const h = await window.showDirectoryPicker({ mode: 'readwrite' });
+    histPush();
+    currentPathStack = [{ name: h.name, fullPath: 'local/' + h.name, handle: h }];
+    await loadCurrentDirectory();
+  } catch (e) { if (e.name !== 'AbortError') showMsg('Error', 'No se pudo abrir: ' + e.message, 'fa-circle-xmark text-danger'); }
+}
+async function navigateToPath(abs){
+  if (!abs) return;
+  histPush();
+  const norm = String(abs).replace(/\//g, '\\');
+  const rootM = norm.match(/^([A-Za-z]:\\)/);
+  if (rootM) {
+    const root = rootM[1].toUpperCase();
+    const rest = norm.slice(root.length).split('\\').filter(Boolean);
+    const stack = [{ name: root, fullPath: root }];
+    let acc = root;
+    for (const part of rest) { acc = joinPath(acc, part); stack.push({ name: part, fullPath: acc }); }
+    currentPathStack = stack;
+  } else {
+    const clean = norm.length > 1 ? norm.replace(/\\+$/, '') : norm;
+    const parts = clean.split('\\').filter(Boolean);
+    let acc = '';
+    const stack = [];
+    for (const part of parts) { acc = acc ? joinPath(acc, part) : part + '\\'; stack.push({ name: part, fullPath: acc }); }
+    currentPathStack = stack.length ? stack : [{ name: clean, fullPath: clean }];
+  }
+  selected = []; selAnchor = null;
+  await loadCurrentDirectory();
+}
+async function goUp(){ if (currentPathStack.length > 1) { histPush(); currentPathStack.pop(); await loadCurrentDirectory(); } }
+async function navigateToBreadcrumb(i){ histPush(); currentPathStack = currentPathStack.slice(0, i + 1); await loadCurrentDirectory(); }
+
+async function loadCurrentDirectory(){
+  updateBreadcrumbs();
+  const grid = $('grid-container');
+  grid.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div></div>';
+  $('list-body').innerHTML = '';
+  if (!currentPathStack.length) { allEntries = []; applyView(); return; }
+  if (isElectron) {
+    try { allEntries = await window.winAPI.listDir(curDir()); }
+    catch (e) { showMsg('Error de lectura', `No se pudo leer:\n${curDir()}\n${e.message}`, 'fa-circle-xmark text-danger'); allEntries = []; }
+    if (isGlobalSearch()) runGlobalSearch(); else applyView();
+  } else {
+    try {
+      const h = currentPathStack[currentPathStack.length - 1].handle;
+      const arr = [];
+      for await (const entry of h.values()) {
+        const key = curDir() + '/' + entry.name;
+        handleMap.set(key, entry);
+        arr.push({ name: entry.name, fullPath: key, isDirectory: entry.kind === 'directory', size: 0, mtime: 0, ext: extOf(entry.name), handle: entry });
+      }
+      allEntries = arr; applyView();
+    } catch (e) { showMsg('Error', 'Se perdió el permiso.', 'fa-circle-xmark text-danger'); }
+  }
+}
+
+function sortedFiltered(src){
+  const base = src || allEntries;
+  // En búsqueda global el backend ya filtró por nombre; aquí solo se ordena
+  let arr = src ? base.slice() : base.filter(e => !searchQuery || e.name.toLowerCase().includes(searchQuery));
+  const val = e => sortBy === 'size' ? (e.size || 0) : sortBy === 'date' ? (e.mtime || 0) : sortBy === 'type' ? (e.isDirectory ? '!' : (e.ext || extOf(e.name))) : e.name.toLowerCase();
+  arr.sort((a, b) => {
+    if (a.isDirectory !== b.isDirectory && sortBy === 'name') return a.isDirectory ? -1 : 1;
+    const va = val(a), vb = val(b);
+    return (va < vb ? -1 : va > vb ? 1 : 0) * sortDir;
+  });
+  return arr;
+}
+// Lo visible ahora mismo (respeta búsqueda global): base de rango, Ctrl+A y cabecera
+const visibleEntries = () => currentPathStack.length ? sortedFiltered(isGlobalSearch() ? globalResults : null) : [];
+function runGlobalSearch(){
+  clearTimeout(searchTimer);
+  const q = searchQuery.trim();
+  if (!isGlobalSearch() || !curDir()) { globalResults = []; globalTruncated = false; searching = false; applyView(); return; }
+  searchTimer = setTimeout(async () => {
+    const my = ++searchSeq;
+    const root = curDir();
+    searching = true;
+    $('grid-container').innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div><div class="text-muted small mt-2">Buscando en subcarpetas…</div></div>';
+    $('list-body').innerHTML = '';
+    $('st-count').innerText = 'Buscando…';
+    try {
+      const r = await window.winAPI.searchFiles(root, q);
+      if (my !== searchSeq || root !== curDir()) return;
+      globalResults = r.results; globalTruncated = r.truncated;
+    } catch (e) { globalResults = []; globalTruncated = false; showMsg('Error al buscar', e.message, 'fa-circle-xmark text-danger'); }
+    searching = false;
+    applyView();
+  }, 350);
+}
+
+function applyView(){
+  const g = isGlobalSearch();
+  const arr = currentPathStack.length ? sortedFiltered(g ? globalResults : null) : [];
+  const showGrid = viewMode === 'grid';
+  $('grid-container').classList.toggle('d-none', !showGrid);
+  $('list-container').classList.toggle('d-none', showGrid);
+  if (!currentPathStack.length) {
+    $('grid-container').innerHTML = '<div class="col-12"><div class="empty"><i class="fa-solid fa-laptop-file"></i><h3>Explorador local y nativo</h3><p>Abre una carpeta para empezar. En modo Electron puedes crear, renombrar, eliminar y abrir archivos con sus programas.</p></div></div>';
+    $('st-count').innerText = 'Sin carpeta';
+  } else if (!arr.length) {
+    $('grid-container').innerHTML = '<div class="col-12"><div class="empty"><i class="fa-regular fa-folder-open"></i><h4>' + (searchQuery ? (g ? 'Sin resultados en subcarpetas' : 'Sin resultados') : 'Carpeta vacía') + '</h4></div></div>';
+    $('list-body').innerHTML = '';
+    $('st-count').innerText = g ? 'Sin resultados' : allEntries.length + ' elementos';
+  } else {
+    showGrid ? renderGrid(arr) : renderList(arr);
+    const nF = arr.filter(e => e.isDirectory).length;
+    $('st-count').innerText = g ? `${arr.length} resultado(s) en subcarpetas${globalTruncated ? ' (máx. 500)' : ''}` : `${arr.length} elementos · ${nF} carpetas · ${arr.length - nF} archivos`;
+  }
+  // Podar selección de elementos que ya no existen (renombrados/eliminados)
+  if (selected.length) {
+    const ok = new Set([...allEntries, ...globalResults].map(x => x.fullPath));
+    selected = selected.filter(p => ok.has(p));
+    if (selAnchor && !ok.has(selAnchor)) selAnchor = selected[selected.length - 1] || null;
+  }
+  $('st-clip').innerText = clipboard ? `${clipboard.mode === 'cut' ? 'Cortar' : 'Copiar'}: ${clipboard.items.length}` : '';
+  $('paste-btn').disabled = !(isElectron && clipboard && curDir());
+  paintSelection();
+}
+
+function updateBreadcrumbs(){
+  const c = $('breadcrumbs'); c.innerHTML = '';
+  if (!currentPathStack.length) { c.innerHTML = '<span class="crumb active"><i class="fa-solid fa-house"></i> Inicio</span>'; return; }
+  currentPathStack.forEach((p, i) => {
+    const b = document.createElement('button');
+    b.className = 'crumb' + (i === currentPathStack.length - 1 ? ' active' : '');
+    b.innerHTML = (i === 0 ? '<i class="fa-solid fa-hard-drive me-1"></i>' : '<i class="fa-solid fa-chevron-right text-muted" style="font-size:.65em"></i>') + ' ' + p.name;
+    if (i < currentPathStack.length - 1) b.onclick = () => navigateToBreadcrumb(i);
+    c.appendChild(b);
+  });
+}
+const entryByPath = p => allEntries.find(e => e.fullPath === p) || globalResults.find(e => e.fullPath === p);
+
+// ============ RENDER ============
+function renderGrid(arr){
+  const g = $('grid-container'); g.innerHTML = '';
+  arr.forEach((e, i) => {
+    const col = document.createElement('div'); col.className = 'col-6 col-md-4 col-lg-3 col-xl-2';
+    const card = document.createElement('div');
+    card.className = 'entry-card anim' + (selected.includes(e.fullPath) ? ' selected' : '');
+    card.dataset.path = e.fullPath; card.style.animationDelay = Math.min(i * 20, 300) + 'ms';
+    const sc = document.createElement('button');
+    sc.className = 'sel-check' + (selected.includes(e.fullPath) ? ' on' : '');
+    sc.dataset.path = e.fullPath;
+    sc.innerHTML = `<i class="fa-solid ${selected.includes(e.fullPath) ? 'fa-check-circle' : 'fa-circle'}"></i>`;
+    sc.title = 'Seleccionar (Ctrl+clic suma, Shift+clic rango)';
+    sc.onclick = ev => { ev.stopPropagation(); toggleSel(e.fullPath); };
+    card.appendChild(sc);
+    const cust = normCustomBg(customBackgrounds[e.fullPath]);
+    const bgImg = cust && cust.bg ? cust.bg : '';
+    const tintStyle = cust && cust.bg && cust.useTint !== false && cust.tint ? `background:linear-gradient(180deg,${cust.tint}59 0%,${cust.tint}D9 100%)` : '';
+    const folderIconColor = cust && cust.useIcon && cust.icon ? cust.icon : '';
+    const content = document.createElement('div'); content.className = 'entry-content';
+    // Icono de carpeta siempre presente como respaldo; se oculta por CSS si el fondo carga
+    if (e.isDirectory) {
+      const fi = document.createElement('i');
+      fi.className = 'fa-solid fa-folder folder-icon entry-icon dir-icon';
+      if (folderIconColor) fi.style.color = folderIconColor;
+      content.appendChild(fi);
+    }
+    if (e.isDirectory && bgImg) {
+      const probe = new Image();
+      probe.onload = () => {
+        if (!card.isConnected) return;
+        card.classList.add('has-custom-bg');
+        const bg = document.createElement('div');
+        bg.className = 'custom-bg';
+        bg.style.backgroundImage = `url("${bgImg.replace(/"/g, '&quot;')}")`;
+        card.insertBefore(bg, content);
+        const ov = document.createElement('div');
+        ov.className = 'bg-overlay';
+        if (tintStyle) ov.style.cssText = tintStyle;
+        card.insertBefore(ov, content);
+      };
+      probe.src = bgImg;
+    }
+    const imgExt = ['jpg','jpeg','png','gif','webp','svg','bmp','ico','avif','heic','heif','tif','tiff','psd'].includes(e.ext || extOf(e.name));
+    const showFileIcon = () => { const t = content.querySelector('.thumbnail-container'); if (t) t.innerHTML = `<i class="${iconFor(e)} entry-icon"></i>`; };
+    if (!e.isDirectory && imgExt && isElectron) {
+      const t = document.createElement('div'); t.className = 'thumbnail-container'; t.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-muted fs-3"></i>'; content.appendChild(t);
+      // Miniatura del sistema: rápida y no cuelga la vista con fotos pesadas
+      window.winAPI.thumb(e.fullPath, 256).then(u => {
+        if (!t.isConnected) return;
+        const im = document.createElement('img');
+        im.className = 'file-thumbnail'; im.loading = 'lazy'; im.draggable = false; im.alt = e.name;
+        im.onerror = showFileIcon;
+        im.src = u;
+        t.innerHTML = ''; t.appendChild(im);
+      }).catch(showFileIcon);
+    } else if (!e.isDirectory && imgExt && e.handle) {
+      const t = document.createElement('div'); t.className = 'thumbnail-container'; t.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-muted fs-3"></i>'; content.appendChild(t);
+      e.handle.getFile().then(f => {
+        if (!t.isConnected) return;
+        const u = URL.createObjectURL(f);
+        const im = document.createElement('img');
+        im.className = 'file-thumbnail'; im.loading = 'lazy'; im.draggable = false; im.alt = e.name;
+        im.onerror = showFileIcon;
+        im.src = u;
+        t.innerHTML = ''; t.appendChild(im);
+      }).catch(showFileIcon);
+    } else if (!e.isDirectory) {
+      content.innerHTML += `<i class="${iconFor(e)} entry-icon"></i>`;
+    }
+    const nameDiv = document.createElement('div'); nameDiv.className = 'entry-name'; nameDiv.title = e.fullPath; nameDiv.textContent = e.name; content.appendChild(nameDiv);
+    // Solo en búsqueda global se muestra contexto (carpeta padre); en vista normal la tarjeta queda limpia
+    if (isGlobalSearch()) {
+      const metaDiv = document.createElement('div'); metaDiv.className = 'entry-meta';
+      metaDiv.textContent = e.isDirectory ? parentName(e.fullPath) + ' · Carpeta' : parentName(e.fullPath) + ' · ' + fmtSize(e.size);
+      content.appendChild(metaDiv);
+    }
+    card.appendChild(content);
+    card.onclick = ev => selectEntry(e.fullPath, card, ev);
+    card.ondblclick = () => openEntry(e);
+    col.appendChild(card); g.appendChild(col);
+  });
+}
+
+function renderList(arr){
+  const tb = $('list-body'); tb.innerHTML = '';
+  arr.forEach(e => {
+    const tr = document.createElement('tr');
+    if (selected.includes(e.fullPath)) tr.classList.add('selected');
+    tr.dataset.path = e.fullPath;
+    const cust = normCustomBg(customBackgrounds[e.fullPath]);
+    const mark = e.isDirectory && cust ? ' <i class="fa-solid fa-image text-primary" title="Personalizada"></i>' : '';
+    const fstyle = e.isDirectory && cust && cust.useIcon && cust.icon ? ` style="color:${cust.icon}"` : '';
+    tr.innerHTML = `<td><input type="checkbox" class="row-check" data-path="${esc(e.fullPath)}"${selected.includes(e.fullPath) ? ' checked' : ''}></td><td><div class="namecell"><i class="${iconFor(e)}"${fstyle}></i><span title="${esc(e.fullPath)}">${esc(e.name)}${mark}</span></div></td><td class="text-muted">${fmtDate(e.mtime)}</td><td class="text-muted">${typeLabel(e)}</td><td class="text-muted">${e.isDirectory ? '—' : fmtSize(e.size)}</td>`;
+    tr.querySelector('.row-check').onclick = ev => { ev.stopPropagation(); toggleSel(e.fullPath); };
+    tr.onclick = ev => selectEntry(e.fullPath, tr, ev);
+    tr.ondblclick = () => openEntry(e);
+    tb.appendChild(tr);
+  });
+}
+// ============ SELECCIÓN MÚLTIPLE ============
+const selEntries = () => selected.map(entryByPath).filter(Boolean);
+function isSel(p){ return selected.includes(p); }
+function toggleSel(p){
+  const i = selected.indexOf(p);
+  if (i >= 0) selected.splice(i, 1);
+  else { selected.push(p); selAnchor = p; }
+  paintSelection();
+}
+function ensureSelected(e){
+  if (!selected.includes(e.fullPath)) { selected = [e.fullPath]; selAnchor = e.fullPath; paintSelection(); }
+}
+function clearSelection(){ selected = []; selAnchor = null; paintSelection(); }
+function selectAllVisible(){
+  selected = visibleEntries().map(x => x.fullPath);
+  selAnchor = selected[selected.length - 1] || null;
+  paintSelection();
+}
+function selectEntry(p, el, ev){
+  ev = ev || window.event;
+  const multi = ev && (ev.ctrlKey || ev.metaKey);
+  const range = ev && ev.shiftKey;
+  if (range && selAnchor) {
+    const order = visibleEntries().map(x => x.fullPath);
+    const a = order.indexOf(selAnchor), b = order.indexOf(p);
+    if (a !== -1 && b !== -1) {
+      const slice = order.slice(Math.min(a, b), Math.max(a, b) + 1);
+      if (multi) slice.forEach(x => { if (!selected.includes(x)) selected.push(x); });
+      else selected = slice;
+      paintSelection();
+      return;
+    }
+  }
+  if (multi) toggleSel(p);
+  else { selected = [p]; selAnchor = p; paintSelection(); }
+}
+function paintSelection(){
+  document.querySelectorAll('[data-path]').forEach(n => n.classList.toggle('selected', selected.includes(n.dataset.path)));
+  document.querySelectorAll('.sel-check').forEach(c => {
+    const on = selected.includes(c.dataset.path);
+    c.classList.toggle('on', on);
+    c.innerHTML = `<i class="fa-solid ${on ? 'fa-check-circle' : 'fa-circle'}"></i>`;
+  });
+  document.querySelectorAll('.row-check[data-path]').forEach(c => { c.checked = selected.includes(c.dataset.path); });
+  const hall = $('check-all');
+  if (hall) {
+    const vis = visibleEntries().map(x => x.fullPath);
+    hall.checked = vis.length > 0 && vis.every(p => selected.includes(p));
+    hall.indeterminate = !hall.checked && vis.some(p => selected.includes(p));
+  }
+  const n = selected.length;
+  let size = 0;
+  selected.forEach(p => { const en = entryByPath(p); if (en && !en.isDirectory) size += en.size || 0; });
+  $('st-sel').innerText = !n ? '' : (n === 1 ? 'Sel: ' + String(selected[0]).split(/[\\/]/).pop() : `Sel: ${n} elementos · ${fmtSize(size)}`);
+  const sb = $('selbar');
+  if (sb) {
+    sb.classList.toggle('d-none', n === 0);
+    const c = $('sel-count');
+    if (c) c.innerText = n === 1 ? '1 seleccionado' : `${n} seleccionados`;
+  }
+}
+
+// ============ SELECCIÓN CON EL MOUSE (MARCO DE ARRASTRE) ============
+let mq = null;
+function initMarquee(){
+  const el = document.createElement('div');
+  el.id = 'marquee';
+  document.body.appendChild(el);
+  [$('grid-container'), $('list-container')].forEach(c => c.addEventListener('mousedown', e => marqueeDown(e, c)));
+  document.addEventListener('mousemove', marqueeMove);
+  document.addEventListener('mouseup', marqueeUp);
+}
+function marqueeDown(e, container){
+  if (e.button !== 0) return;
+  if (container.classList.contains('d-none') || !currentPathStack.length) return;
+  if (e.target.closest('[data-path],button,input,select,a,textarea')) return;
+  mq = {
+    container,
+    startX: e.clientX, startY: e.clientY, curX: e.clientX, curY: e.clientY,
+    base: (e.ctrlKey || e.metaKey || e.shiftKey) ? [...selected] : [],
+    additive: !!(e.ctrlKey || e.metaKey || e.shiftKey),
+    active: false, raf: 0, timer: 0
+  };
+}
+function marqueeMove(e){
+  if (!mq) return;
+  mq.curX = e.clientX; mq.curY = e.clientY;
+  if (!mq.active && (Math.abs(mq.curX - mq.startX) > 5 || Math.abs(mq.curY - mq.startY) > 5)) {
+    mq.active = true;
+    document.body.classList.add('marqueeing');
+    mq.timer = setInterval(() => {
+      if (!mq) return;
+      if (mq.curY < 70) window.scrollBy(0, -16);
+      else if (mq.curY > innerHeight - 70) window.scrollBy(0, 16);
+    }, 50);
+  }
+  if (!mq.active) return;
+  if (mq.raf) return;
+  mq.raf = requestAnimationFrame(() => { mq.raf = 0; marqueePaint(); });
+}
+function marqueePaint(){
+  if (!mq) return;
+  const x1 = Math.min(mq.startX, mq.curX), x2 = Math.max(mq.startX, mq.curX);
+  const y1 = Math.min(mq.startY, mq.curY), y2 = Math.max(mq.startY, mq.curY);
+  const box = $('marquee');
+  box.style.display = 'block';
+  box.style.left = x1 + 'px'; box.style.top = y1 + 'px';
+  box.style.width = (x2 - x1) + 'px'; box.style.height = (y2 - y1) + 'px';
+  const hit = [];
+  mq.container.querySelectorAll('[data-path]').forEach(n => {
+    const b = n.getBoundingClientRect();
+    if (b.left < x2 && b.right > x1 && b.top < y2 && b.bottom > y1) hit.push(n.dataset.path);
+  });
+  selected = mq.additive ? [...new Set([...mq.base, ...hit])] : hit;
+  paintSelection();
+}
+function marqueeUp(e){
+  if (!mq) return;
+  const wasActive = mq.active;
+  if (mq.timer) clearInterval(mq.timer);
+  if (mq.raf) cancelAnimationFrame(mq.raf);
+  const box = $('marquee');
+  if (box) box.style.display = 'none';
+  document.body.classList.remove('marqueeing');
+  if (!wasActive) {
+    // Clic simple en zona vacía: limpia la selección (como el Explorador de Windows)
+    const t = e.target;
+    if (!(t && t.closest && t.closest('[data-path],button,input,select,a,textarea')) && !(e.ctrlKey || e.metaKey || e.shiftKey)) {
+      selected = []; selAnchor = null; paintSelection();
+    }
+  } else if (selected.length) {
+    selAnchor = selected[selected.length - 1];
+  }
+  mq = null;
+}
+
+// ============ APERTURA ============
+async function openEntry(e){
+  if (e.isDirectory) {
+    // En Electron se reconstruye la pila desde la ruta absoluta (vale para resultados globales)
+    if (isElectron) { selected = []; selAnchor = null; await navigateToPath(e.fullPath); return; }
+    histPush();
+    const h = handleMap.get(e.fullPath) || e.handle; currentPathStack.push({ name: e.name, fullPath: e.fullPath, handle: h }); await loadCurrentDirectory();
+    return;
+  }
+  if (isElectron) return handleFileNative(e);
+  return handleFileLegacy(e.handle || handleMap.get(e.fullPath), e.name);
+}
+async function openExternal(p){ try { await window.winAPI.openPath(p); } catch (e) { showMsg('No se pudo abrir', e.message, 'fa-circle-xmark text-danger'); } }
+
+const TEXT = ['txt','md','html','css','js','json','csv','py','xml','ts','jsx','tsx','log','ini','java','cs','cpp','sql'];
+const IMG = ['jpg','jpeg','png','gif','webp','svg','bmp','ico','avif','heic','heif','tif','tiff','psd'];
+const VID = ['mp4','webm','ogg','mov','mkv','avi','wmv','flv'];
+const AUD = ['mp3','wav','ogg','m4a','flac'];
+// Lo que Chromium sí puede mostrar en <img>/<video>/<audio> sin ayuda externa
+const VIEW_IMG = ['jpg','jpeg','png','gif','webp','svg','bmp','ico','avif'];
+const VIEW_VID = ['mp4','webm','ogg','mov','mkv'];
+const VIEW_AUD = ['mp3','wav','ogg','m4a','flac'];
+
+async function handleFileNative(e){
+  const x = (e.ext || extOf(e.name));
+  if (TEXT.includes(x)) return openEditorNative(e);
+  if (IMG.includes(x) || VID.includes(x) || AUD.includes(x) || x === 'pdf') return openPreviewNative(e, x);
+  return openExternal(e.fullPath);
+}
+async function handleFileLegacy(handle, name){
+  if (!handle) return;
+  const x = extOf(name);
+  if (TEXT.includes(x)) return openEditorLegacy(handle);
+  try {
+    const f = await handle.getFile();
+    if (IMG.includes(x) || VID.includes(x) || AUD.includes(x) || x === 'pdf') return openPreviewLegacy(f, name, x);
+    const url = URL.createObjectURL(f); window.open(url, '_blank'); setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch (e) { showMsg('Error', 'No se pudo abrir.', 'fa-circle-xmark text-danger'); }
+}
+
+// ============ EDITOR ============
+async function openEditorNative(e){
+  try {
+    const r = await window.winAPI.readText(e.fullPath);
+    currentNativeEditing = e.fullPath; currentEditingHandle = null;
+    $('editor-title').innerText = e.name; $('editor-textarea').value = r.content;
+    $('editor-status').innerText = 'Modificado: ' + fmtDate(r.mtime);
+    editorModal.show();
+  } catch (e2) { showMsg('Error', e2.message, 'fa-circle-xmark text-danger'); }
+}
+async function openEditorLegacy(h){
+  try {
+    const f = await h.getFile(); const t = await f.text();
+    currentEditingHandle = h; currentNativeEditing = null;
+    $('editor-title').innerText = h.name; $('editor-textarea').value = t;
+    $('editor-status').innerText = 'Modificado: ' + fmtDate(f.lastModified);
+    editorModal.show();
+  } catch { showMsg('Error', 'No se pudo leer.', 'fa-circle-xmark text-danger'); }
+}
+async function saveEditedFile(){
+  const txt = $('editor-textarea').value;
+  if (isElectron && currentNativeEditing) {
+    try { $('editor-status').innerText = 'Guardando...'; await window.winAPI.writeText(currentNativeEditing, txt); $('editor-status').innerText = 'Guardado ' + new Date().toLocaleTimeString(); showToast('Archivo guardado'); loadCurrentDirectory(); }
+    catch (e) { showMsg('Error', e.message, 'fa-circle-xmark text-danger'); }
+    return;
+  }
+  if (currentEditingHandle) {
+    try { const w = await currentEditingHandle.createWritable(); await w.write(txt); await w.close(); showToast('Archivo guardado'); }
+    catch { showMsg('Error', 'Sin permiso de escritura.', 'fa-circle-xmark text-danger'); }
+  }
+}
+
+// ============ PREVIEW ============
+function mediaFallback(b, e, label){
+  b.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'text-center p-5';
+  const ic = document.createElement('i');
+  ic.className = iconFor(e) + ' mb-3';
+  ic.style.cssText = 'font-size:3.5rem';
+  const t1 = document.createElement('div'); t1.className = 'fw-bold'; t1.textContent = e.name;
+  const t2 = document.createElement('div'); t2.className = 'text-muted small mb-4'; t2.textContent = label;
+  const row = document.createElement('div'); row.className = 'd-flex gap-2 justify-content-center';
+  const b1 = document.createElement('button'); b1.className = 'btn btn-success'; b1.innerHTML = '<i class="fa-solid fa-arrow-up-right-from-square me-2"></i>Abrir con programa';
+  b1.onclick = () => openExternal(e.fullPath);
+  const b2 = document.createElement('button'); b2.className = 'btn btn-outline-light'; b2.textContent = 'Mostrar en Explorer';
+  b2.onclick = () => window.winAPI.showInFolder(e.fullPath);
+  row.appendChild(b1); row.appendChild(b2);
+  wrap.appendChild(ic); wrap.appendChild(t1); wrap.appendChild(t2); wrap.appendChild(row);
+  b.appendChild(wrap);
+}
+async function openPreviewNative(e, x){
+  try {
+    const url = await window.winAPI.fileUrl(e.fullPath);
+    currentPreviewUrl = url; currentPreviewPath = e.fullPath;
+    $('preview-title').innerText = e.name;
+    previewModal.show();
+    const b = $('preview-body'); b.innerHTML = '<div class="spinner-border text-light"></div>';
+    setTimeout(() => {
+      if (!b.isConnected) return;
+      if (VIEW_IMG.includes(x)) {
+        b.innerHTML = '';
+        const im = document.createElement('img');
+        im.style.cssText = 'max-width:100%;max-height:78vh;object-fit:contain';
+        im.onerror = () => mediaFallback(b, e, 'El navegador no puede mostrar este formato de imagen.');
+        im.src = url; b.appendChild(im);
+      }
+      else if (VIEW_VID.includes(x)) {
+        b.innerHTML = '';
+        const v = document.createElement('video');
+        v.style.cssText = 'max-width:100%;max-height:78vh';
+        v.controls = true; v.autoplay = true;
+        const s = document.createElement('source'); s.src = url;
+        v.appendChild(s);
+        v.onerror = () => mediaFallback(b, e, 'El navegador no puede reproducir este video.');
+        // Si el formato está en el <video> pero el códec falla, el error llega tarde: comprobar tras 1.5s
+        setTimeout(() => { if (v.networkState === 3 || (v.readyState === 0 && v.networkState !== 1 && b.contains(v))) mediaFallback(b, e, 'El navegador no puede reproducir este video.'); }, 1500);
+        b.appendChild(v);
+      }
+      else if (VIEW_AUD.includes(x)) {
+        b.innerHTML = '';
+        const a = document.createElement('audio');
+        a.style.width = '80%'; a.controls = true; a.autoplay = true; a.src = url;
+        a.onerror = () => mediaFallback(b, e, 'El navegador no puede reproducir este audio.');
+        b.appendChild(a);
+      }
+      else if (x === 'pdf') {
+        const f = document.createElement('iframe');
+        f.style.cssText = 'width:100%;height:78vh;border:0;background:#fff';
+        f.src = url; b.innerHTML = ''; b.appendChild(f);
+      }
+      else mediaFallback(b, e, 'Vista previa no disponible para este formato en el navegador.');
+    }, 200);
+  } catch (e2) { showMsg('Error', e2.message, 'fa-circle-xmark text-danger'); }
+}
+async function openPreviewLegacy(file, name, x){
+  const url = URL.createObjectURL(file);
+  currentPreviewUrl = url; currentPreviewPath = null;
+  $('preview-title').innerText = name; previewModal.show();
+  const b = $('preview-body'); b.innerHTML = '';
+  if (VIEW_IMG.includes(x)) {
+    const im = document.createElement('img');
+    im.style.cssText = 'max-width:100%;max-height:78vh;object-fit:contain';
+    im.onerror = () => { b.innerHTML = '<div class="text-white-50 p-5">No se pudo mostrar la imagen.</div>'; };
+    im.src = url; b.appendChild(im);
+  }
+  else if (VIEW_VID.includes(x)) { const v = document.createElement('video'); v.style.cssText = 'max-width:100%;max-height:78vh'; v.controls = true; v.autoplay = true; v.src = url; b.appendChild(v); }
+  else if (VIEW_AUD.includes(x)) { const a = document.createElement('audio'); a.style.width = '80%'; a.controls = true; a.autoplay = true; a.src = url; b.appendChild(a); }
+  else { const f = document.createElement('iframe'); f.style.cssText = 'width:100%;height:78vh;border:0;background:#fff'; f.src = url; b.appendChild(f); }
+}
+
+// ============ CRUD ============
+function needDir(){ const d = curDir(); if (!d) showMsg('Sin carpeta', 'Abre primero una carpeta.', 'fa-folder-open text-warning'); return d; }
+function askInput(title, initial, ok){ $('input-title').innerText = title; $('input-value').value = initial || ''; inputAction = v => { if (!v) return; inputModal.hide(); ok(v); }; inputModal.show(); setTimeout(() => { $('input-value').focus(); $('input-value').select(); }, 300); }
+function askNewFolder(){ const d = needDir(); if (!d || !isElectron) return; askInput('Nueva carpeta', 'Nueva carpeta', async v => { try { await window.winAPI.mkdir(joinPath(d, v)); showToast('Carpeta creada'); loadCurrentDirectory(); } catch (e) { showMsg('Error', e.message, 'fa-circle-xmark text-danger'); } }); }
+function askNewFile(){ const d = needDir(); if (!d || !isElectron) return; askInput('Nuevo archivo (ej: notas.txt)', 'nuevo.txt', async v => { try { await window.winAPI.mkfile(joinPath(d, v)); showToast('Archivo creado'); loadCurrentDirectory(); } catch (e) { showMsg('Error', e.message, 'fa-circle-xmark text-danger'); } }); }
+function askRename(e){ const d = curDir(); askInput('Renombrar', e.name, async v => { if (v === e.name) return; try { if (isElectron) { await window.winAPI.renamePath(e.fullPath, joinPath(d, v)); moveCustomBg(e.fullPath, joinPath(d, v), e.isDirectory); } else { await e.handle.move(v); } showToast('Renombrado'); refreshSideCustom(); loadCurrentDirectory(); } catch (err) { showMsg('Error', err.message, 'fa-circle-xmark text-danger'); } }); }
+function askDelete(e){ $('confirm-text').innerText = `"${e.name}" se enviará a la papelera.`; confirmAction = async () => { try { await window.winAPI.trash(e.fullPath); selected = selected.filter(p => p !== e.fullPath); showToast('Enviado a papelera'); loadCurrentDirectory(); } catch (err) { showMsg('Error', err.message, 'fa-circle-xmark text-danger'); } }; confirmModal.show(); }
+function setClipboard(mode, e){ clipSelected(mode, [e]); }
+function clipSelected(mode, entries){
+  const list = (entries || selEntries()).filter(Boolean);
+  if (!list.length) return;
+  clipboard = { mode, items: list.map(x => x.fullPath || x) };
+  showToast(`${clipboard.items.length} ${mode === 'cut' ? 'cortado(s)' : 'copiado(s)'}: ve al destino y pulsa Pegar`);
+  applyView();
+}
+// ---- Acciones en lote sobre la selección ----
+async function openSelected(list){
+  const es = list || selEntries();
+  if (!es.length) return;
+  if (es.length === 1) return openEntry(es[0]);
+  const files = es.filter(x => !x.isDirectory);
+  if (es.some(x => x.isDirectory)) showToast('Las carpetas se abren de una en una: solo se abren los archivos');
+  if (!files.length) return;
+  if (files.length > 10) return showMsg('Demasiados archivos', 'Selecciona máximo 10 para abrir a la vez.', 'fa-triangle-exclamation text-warning');
+  files.forEach(f => isElectron ? openExternal(f.fullPath) : openEntry(f));
+}
+function deleteSelected(list){
+  const es = list || selEntries();
+  if (!es.length || !isElectron) return;
+  if (es.length === 1) return askDelete(es[0]);
+  $('confirm-text').innerText = `${es.length} elementos se enviarán a la papelera.`;
+  confirmAction = async () => {
+    let ok = 0, fail = 0;
+    for (const x of es) { try { await window.winAPI.trash(x.fullPath); ok++; } catch { fail++; } }
+    selected = []; selAnchor = null;
+    showToast(fail ? `${ok} eliminados, ${fail} fallaron` : `${ok} enviados a papelera`);
+    loadCurrentDirectory();
+  };
+  confirmModal.show();
+}
+async function duplicateSelected(list){
+  const es = list || selEntries();
+  if (!es.length || !isElectron) return;
+  const d = curDir();
+  if (!d) return showMsg('Sin carpeta', 'Abre primero una carpeta destino.', 'fa-folder-open text-warning');
+  const taken = allEntries.map(x => x.name.toLowerCase());
+  let ok = 0;
+  for (const e of es) {
+    const dot = e.name.lastIndexOf('.');
+    const base = !e.isDirectory && dot > 0 ? e.name.slice(0, dot) : e.name;
+    const ext = !e.isDirectory && dot > 0 ? e.name.slice(dot) : '';
+    let n = base + ' - copia' + ext, i = 2;
+    while (taken.includes(n.toLowerCase())) n = `${base} - copia (${i++})${ext}`;
+    try { await window.winAPI.copyEntry(e.fullPath, joinPath(d, n)); taken.push(n.toLowerCase()); ok++; }
+    catch (err) { showMsg('Error', err.message, 'fa-circle-xmark text-danger'); break; }
+  }
+  selected = []; selAnchor = null;
+  if (ok) showToast(ok === 1 ? 'Duplicado' : `${ok} duplicados`);
+  loadCurrentDirectory();
+}
+async function copyPathsSelected(list){
+  const es = list || selEntries();
+  if (!es.length) return;
+  const t = es.map(x => x.fullPath).join('\n');
+  try { await navigator.clipboard.writeText(t); showToast(es.length === 1 ? 'Ruta copiada' : `${es.length} rutas copiadas`); }
+  catch { showMsg('Rutas', t, 'fa-link text-primary'); }
+}
+async function propsSelected(list){
+  const es = list || selEntries();
+  if (!es.length) return;
+  if (es.length === 1) return showProperties(es[0]);
+  const files = es.filter(x => !x.isDirectory);
+  const size = files.reduce((a, x) => a + (x.size || 0), 0);
+  $('props-body').innerHTML = `<div class="fw-bold mb-2">${es.length} elementos (${es.length - files.length} carpetas, ${files.length} archivos)</div><div class="row"><div class="col-6 text-muted">Tamaño total (archivos)</div><div class="col-6">${fmtSize(size)}</div></div><div class="small text-muted mt-3 text-break" style="max-height:200px;overflow:auto">${es.slice(0, 50).map(x => esc(x.fullPath)).join('<br>')}${es.length > 50 ? '<br>…' : ''}</div><button class="btn btn-sm btn-outline-secondary mt-3" id="props-copyall"><i class="fa-solid fa-copy me-1"></i>Copiar rutas</button>`;
+  propsModal.show();
+  $('props-copyall').onclick = copyPathsSelected;
+}
+async function doPaste(){
+  if (!clipboard || !curDir()) return;
+  for (const src of clipboard.items) {
+    const name = src.split(/[\\/]/).pop();
+    const dest = joinPath(curDir(), name);
+    if (src.toLowerCase() === dest.toLowerCase()) continue;
+    try {
+      if (clipboard.mode === 'cut') { await window.winAPI.renamePath(src, dest); }
+      else {
+        let d2 = dest, i = 2;
+        const dot = name.lastIndexOf('.'); const base = dot > 0 ? name.slice(0, dot) : name; const ext = dot > 0 ? name.slice(dot) : '';
+        while (allEntries.some(x => x.fullPath.toLowerCase() === d2.toLowerCase())) d2 = joinPath(curDir(), `${base} (${i++})${ext}`);
+        await window.winAPI.copyEntry(src, d2);
+      }
+    } catch (err) { showMsg('Error al pegar', err.message, 'fa-circle-xmark text-danger'); }
+  }
+  if (clipboard.mode === 'cut') clipboard = null;
+  loadCurrentDirectory();
+}
+async function showProperties(e){
+  let extra = '';
+  if (isElectron) { try { const s = await window.winAPI.statEntry(e.fullPath); extra = `<div class="row mt-2"><div class="col-6 text-muted">Creado</div><div class="col-6">${fmtDate(s.birthtime || s.ctime)}</div><div class="col-6 text-muted">Modificado</div><div class="col-6">${fmtDate(s.mtime)}</div></div>`; } catch {} }
+  $('props-body').innerHTML = `<div class="d-flex gap-3 align-items-center mb-3"><i class="${iconFor(e)}" style="font-size:2.5rem"></i><div><div class="fw-bold">${e.name}</div><div class="text-muted small">${typeLabel(e)}</div></div></div><div class="small text-break bg-light p-2 rounded border mb-2" style="background:var(--panel2)!important">${e.fullPath}</div><div class="row"><div class="col-6 text-muted">Tamaño</div><div class="col-6">${e.isDirectory ? '—' : fmtSize(e.size)}</div></div>${extra}<button class="btn btn-sm btn-outline-secondary mt-3" onclick="copyPath('${e.fullPath.replace(/'/g, "\\'")}')"><i class="fa-solid fa-copy me-1"></i>Copiar ruta</button>`;
+  propsModal.show();
+}
+async function copyPath(p){ try { await navigator.clipboard.writeText(p); showToast('Ruta copiada'); } catch { showMsg('Ruta', p, 'fa-link text-primary'); } }
+
+// ============ PERSONALIZAR ============
+function openCustomizeModal(pathKey, current){
+  const c = normCustomBg(current) || { bg: '', tint: '#0d6efd', useTint: true, icon: '#f0b429', useIcon: false, menuIcon: '' };
+  $('custom-folder-path').value = pathKey;
+  $('custom-bg-url').value = c.bg || '';
+  $('custom-bg-file').value = '';
+  $('custom-bg-tint').value = /^#[0-9a-f]{6}$/i.test(c.tint || '') ? c.tint : '#0d6efd';
+  $('custom-bg-icon').value = /^#[0-9a-f]{6}$/i.test(c.icon || '') ? c.icon : '#f0b429';
+  $('custom-bg-usetint').checked = c.useTint !== false;
+  $('custom-bg-useicon').checked = !!c.useIcon;
+  $('custom-menu-icon').value = c.menuIcon || '';
+  updateCustomPreview();
+  customizeModal.show();
+}
+function saveCustomization(){
+  const p = $('custom-folder-path').value, u = $('custom-bg-url').value.trim();
+  const obj = { bg: u, tint: $('custom-bg-tint').value, useTint: $('custom-bg-usetint').checked, icon: $('custom-bg-icon').value, useIcon: $('custom-bg-useicon').checked, menuIcon: $('custom-menu-icon').value };
+  if (!u && !obj.useIcon && !obj.menuIcon) delete customBackgrounds[p];
+  else customBackgrounds[p] = obj;
+  saveToStorage(); customizeModal.hide(); applyView(); refreshSideCustom(); showToast('Personalización guardada');
+}
+function updateCustomPreview(){
+  const url = $('custom-bg-url').value.trim();
+  const tint = $('custom-bg-tint').value, icon = $('custom-bg-icon').value;
+  const useTint = $('custom-bg-usetint').checked, useIcon = $('custom-bg-useicon').checked;
+  const card = $('custom-preview-card'), inner = $('custom-preview-inner');
+  card.style.backgroundImage = url ? `url('${url.replace(/'/g, "\\'")}')` : 'none';
+  card.style.backgroundSize = 'cover'; card.style.backgroundPosition = 'center';
+  card.style.boxShadow = url && useTint ? `inset 0 -80px 60px -20px ${tint}` : 'none';
+  inner.innerHTML = `<i class="fa-solid fa-folder" style="font-size:2.6rem;color:${useIcon ? icon : '#f0b429'}"></i><div class="fw-bold mt-1"${url ? ' style="color:#fff;text-shadow:0 2px 4px rgba(0,0,0,.9)"' : ''}>Mi carpeta</div>`;
+}
+function clearCustomization(){ delete customBackgrounds[$('custom-folder-path').value]; saveToStorage(); customizeModal.hide(); applyView(); refreshSideCustom(); }
+function saveToStorage(){
+  try { localStorage.setItem('localFileMgrBackgrounds', JSON.stringify(customBackgrounds)); return true; }
+  catch (e) {
+    showMsg('Sin espacio', 'El navegador se quedó sin espacio para guardar personalizaciones (límite ~5MB). Usa una URL en vez de subir la imagen, o quita personalizaciones viejas.', 'fa-triangle-exclamation text-warning');
+    return false;
+  }
+}
+function moveCustomBg(oldP, newP, isDir){ if (customBackgrounds[oldP]) { customBackgrounds[newP] = customBackgrounds[oldP]; delete customBackgrounds[oldP]; } if (isDir) { Object.keys(customBackgrounds).forEach(k => { if (k.startsWith(oldP + '\\') || k.startsWith(oldP + '/')) { customBackgrounds[k.replace(oldP, newP)] = customBackgrounds[k]; delete customBackgrounds[k]; } }); } saveToStorage(); }
+function resizeCustomImage(e){
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => { const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); let w = img.width, h = img.height; const MW = 800, MH = 600; if (w > h && w > MW) { h *= MW / w; w = MW; } else if (h >= w && h > MH) { w *= MH / h; h = MH; } c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); $('custom-bg-url').value = c.toDataURL('image/jpeg', .8); }; img.src = ev.target.result; };
+  r.readAsDataURL(f);
+}
+
+// ============ MENÚ CONTEXTUAL ============
+function hideCtx(){ $('ctx').style.display = 'none'; }
+function showCtx(ev, e){
+  if (!e) return;
+  ensureSelected(e);
+  // Lote objetivo: la selección si incluye lo clicado; si no, solo ese elemento
+  // (así el menú lateral opera sobre accesos/favoritos aunque no estén en la vista)
+  const raw = selEntries();
+  const L = raw.length ? raw : [e];
+  const n = L.length;
+  const tag = n > 1 ? ` (${n})` : '';
+  const single = n === 1 ? L[0] : e;
+  const m = $('ctx');
+  m.innerHTML = `
+    <button data-a="open"><i class="fa-solid fa-door-open text-primary"></i>${single.isDirectory && n === 1 ? 'Abrir carpeta' : 'Abrir' + tag}</button>
+    ${!single.isDirectory && isElectron && n === 1 ? '<button data-a="ext"><i class="fa-solid fa-arrow-up-right-from-square text-success"></i>Abrir con programa</button>' : ''}
+    <button data-a="explorer" ${isElectron ? '' : 'disabled'}><i class="fa-solid fa-folder-tree"></i>Mostrar en Explorer</button>
+    <hr>
+    <button data-a="copy"><i class="fa-solid fa-copy"></i>Copiar${tag}</button>
+    <button data-a="cut" ${isElectron ? '' : 'disabled'}><i class="fa-solid fa-scissors"></i>Cortar${tag}</button>
+    <button data-a="dup" ${isElectron ? '' : 'disabled'}><i class="fa-solid fa-clone"></i>Duplicar${tag}</button>
+    ${n === 1 ? '<button data-a="rename"><i class="fa-solid fa-pen"></i>Renombrar <span class="ms-auto text-muted small">F2</span></button>' : ''}
+    <button data-a="del" class="danger" ${isElectron ? '' : 'disabled'}><i class="fa-solid fa-trash"></i>Eliminar${tag} <span class="ms-auto small">Supr</span></button>
+    <hr>
+    ${n === 1 && single.isDirectory ? '<button data-a="bg"><i class="fa-solid fa-palette text-warning"></i>Personalizar</button>' : ''}
+    <button data-a="props"><i class="fa-solid fa-circle-info"></i>Propiedades${tag}</button>
+    <button data-a="path"><i class="fa-solid fa-link"></i>Copiar ruta${n > 1 ? 's' : ''}</button>`;
+  m.style.display = 'block';
+  const x = Math.min(ev.clientX, innerWidth - 260), y = Math.min(ev.clientY, innerHeight - 400);
+  m.style.left = x + 'px'; m.style.top = y + 'px';
+  m.querySelectorAll('button').forEach(b => b.onclick = () => { hideCtx(); ctxAction(b.dataset.a, single, L); });
+}
+function showCtxEmpty(ev){
+  const m = $('ctx');
+  m.innerHTML = `<button data-a="newf"><i class="fa-solid fa-folder-plus text-primary"></i>Nueva carpeta</button><button data-a="newa"><i class="fa-solid fa-file-circle-plus"></i>Nuevo archivo</button><button data-a="paste" ${clipboard ? '' : 'disabled'}><i class="fa-solid fa-paste"></i>Pegar</button><hr><button data-a="refresh"><i class="fa-solid fa-rotate-right"></i>Actualizar</button><button data-a="explorer2"><i class="fa-solid fa-folder-tree"></i>Abrir en Explorer</button>`;
+  m.style.display = 'block';
+  m.style.left = Math.min(ev.clientX, innerWidth - 260) + 'px'; m.style.top = Math.min(ev.clientY, innerHeight - 260) + 'px';
+  m.querySelectorAll('button').forEach(b => b.onclick = () => { hideCtx(); const a = b.dataset.a; if (a === 'newf') askNewFolder(); if (a === 'newa') askNewFile(); if (a === 'paste') doPaste(); if (a === 'refresh') loadCurrentDirectory(); if (a === 'explorer2' && curDir()) window.winAPI.showInFolder(curDir()); });
+}
+function ctxAction(a, e, L){
+  L = (L && L.length ? L : [e]).filter(Boolean);
+  const one = L.length === 1 ? L[0] : null;
+  if (a === 'open') { if (L.length === 1) openEntry(L[0]); else openSelected(L); }
+  if (a === 'ext') openExternal(e.fullPath);
+  if (a === 'explorer' && isElectron) window.winAPI.showInFolder(e.fullPath);
+  if (a === 'copy') clipSelected('copy', L);
+  if (a === 'cut') clipSelected('cut', L);
+  if (a === 'dup') duplicateSelected(L);
+  if (a === 'rename' && one) askRename(one);
+  if (a === 'del') deleteSelected(L);
+  if (a === 'bg') openCustomizeModal(e.fullPath, customBackgrounds[e.fullPath]);
+  if (a === 'props') propsSelected(L);
+  if (a === 'path') copyPathsSelected(L);
+}
+
+// ============ TECLADO ============
+function onKeys(e){
+  if (e.target.matches('input,textarea')) { if (e.key === 'Escape') e.target.blur(); return; }
+  const es = selEntries();
+  const one = es.length === 1 ? es[0] : null;
+  if (e.key === 'F5') { e.preventDefault(); loadCurrentDirectory(); }
+  else if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); goBack(); }
+  else if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); goFwd(); }
+  else if (e.key === 'Backspace') { e.preventDefault(); goUp(); }
+  else if (e.key === 'Escape') clearSelection();
+  else if (e.key === 'Enter' && es.length) openSelected();
+  else if ((e.key === 'F2' || (e.key === 'r' && e.ctrlKey)) && one) { e.preventDefault(); askRename(one); }
+  else if (e.key === 'Delete' && es.length && isElectron) deleteSelected();
+  else if (e.ctrlKey && e.key.toLowerCase() === 'f') { e.preventDefault(); $('search-input').focus(); }
+  else if (e.ctrlKey && e.key.toLowerCase() === 'a') { e.preventDefault(); selectAllVisible(); }
+  else if (e.ctrlKey && e.key.toLowerCase() === 'c' && es.length) clipSelected('copy');
+  else if (e.ctrlKey && e.key.toLowerCase() === 'x' && es.length && isElectron) clipSelected('cut');
+  else if (e.ctrlKey && e.key.toLowerCase() === 'v' && isElectron) doPaste();
+}
+
+// ============ UI genérica ============
+function showMsg(t, x, icon){ $('msg-title').innerText = t; $('msg-text').innerText = x; $('msg-icon').className = `fa-solid fa-3x mb-3 ${icon || 'fa-info-circle text-primary'}`; messageModal.show(); }
+function showToast(msg){
+  const el = document.createElement('div');
+  el.className = 'toast align-items-center fm-toast show';
+  el.innerHTML = `<div class="d-flex"><div class="toast-body"><i class="fa-solid fa-check-circle me-2 text-success"></i>${msg}</div><button class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+  $('toast-container').appendChild(el);
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 2800);
+}
+</script>
+</body>
+</html>

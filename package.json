@@ -1,0 +1,23 @@
+{
+  "name": "gestor-archivos-windows",
+  "version": "1.0.0",
+  "description": "Gestor de archivos nativo Windows con Electron - abre archivos con sus programas",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.gestor.archivos",
+    "productName": "GestorArchivos",
+    "files": ["main.js", "preload.js", "index.html", "package.json"],
+    "win": {
+      "target": ["portable"]
+    }
+  },
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}
